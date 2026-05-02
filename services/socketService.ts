@@ -1,7 +1,8 @@
 import { Properties } from "@/config/properties";
 import { toast } from "@backpackapp-io/react-native-toast";
 import io, { Socket } from "socket.io-client";
-import { Reaction, ServerMessage } from "../types";
+import { formatLabelType, formatMessageType, Reaction, ServerMessage } from "../types";
+import { transformMessages, transformSingleMessage } from "@/util/formatMessage";
 
 // Socket setup
 export const socket: Socket = io(Properties.API_BASE_URL, {
@@ -114,49 +115,51 @@ export const socketHandlers = {
 
 // Socket event listeners setup
 export const setupSocketListeners = (
-  setMessages: React.Dispatch<React.SetStateAction<ServerMessage[]>>
+  setMessages: React.Dispatch<React.SetStateAction<formatMessageType[] | formatLabelType[]>>,
+  lastLabelDate: Date | string
 ) => {
   // Handle private messages
   socket.on("receive_message", (newMessage: any) => {
-    console.log("receive_message", newMessage);
-    setMessages((prevMessages) => [
-      ...prevMessages,
-      newMessage as ServerMessage,   
-    ]);
+    const formattedMessage = transformSingleMessage(newMessage as ServerMessage, lastLabelDate);
+    setMessages((prevMessages) => [...prevMessages, ...formattedMessage]);
   });
 
   // Handle group messages
   socket.on("receive_group_message", (newMessage: any) => {
-    console.log("receive_group_message", newMessage);
-    setMessages((prevMessages) => [
-      ...prevMessages,
-      newMessage as ServerMessage,
-    ]);
+    const formattedMessage = transformSingleMessage(newMessage as ServerMessage, lastLabelDate);
+    setMessages((prevMessages) => [...prevMessages, ...formattedMessage]);
   });
 
   // Handle reaction added
   socket.on("message_reaction_added", (updatedMessage: any) => {
     setMessages((prevMessages) => 
-      prevMessages.map((msg: ServerMessage) => {
-        if (updatedMessage?._id === msg?._id) {
+      prevMessages.map((msg: formatMessageType ) => {
+        if (msg.type === "message" && updatedMessage?._id === (msg as formatMessageType)?.data?._id) {
           return {
             ...msg,
-            reactions: [...updatedMessage?.reactions || []],
+            data: {
+              ...(msg as formatMessageType)?.data,
+              reactions: [...(updatedMessage?.reactions || [])],
+            },
           };
         }
         return msg;
       })
     );
   });
+  
 
   // Handle reaction removed
   socket.on("message_reaction_removed", (updatedMessage: any) => {
     setMessages((prevMessages) => 
-      prevMessages.map((msg: ServerMessage) => {
-        if (updatedMessage?._id === msg?._id) {
+      prevMessages.map((msg: formatMessageType) => {
+        if (msg.type === "message" && updatedMessage?._id === (msg as formatMessageType)?.data?._id) {
           return {
             ...msg,
-            reactions: [...updatedMessage?.reactions || []],
+            data: {
+              ...(msg as formatMessageType)?.data,
+              reactions: [...(updatedMessage?.reactions || [])],
+            },
           };
         }
         return msg;

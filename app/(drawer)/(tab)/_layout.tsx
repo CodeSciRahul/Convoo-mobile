@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useColorScheme } from "react-native";
+import CustomTab from "@/components/customTab";
 
 export default function TabLayout() {
     const colorschema = useColorScheme()
@@ -32,5 +33,11 @@ export default function TabLayout() {
                 )
             }} />
         </Tabs>
+        // <Tabs 
+        // tabBar={(props) => <CustomTab {...props}/>}
+        // screenOptions={{
+        //     headerShown: false,
+        // }}
+        // ></Tabs>
     )
 }

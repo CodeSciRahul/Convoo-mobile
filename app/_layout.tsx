@@ -24,7 +24,7 @@ export default function RootLayout() {
           <BottomSheetModalProvider>
             <StatusBar
               backgroundColor={colorschema === "light" ? "#60A5FA" : "#121212"}
-              style={colorschema !== "light" ? "light" : "light"}
+              style={colorschema === "light" ? "dark" : "light"}
             />
             <Stack
               screenOptions={{
@@ -34,8 +34,9 @@ export default function RootLayout() {
                 headerLargeTitleStyle: {
                   color: colorschema === "light" ? "#111111" : "#FFFFFF",
                 },
-                headerTintColor: `${colorschema === "light" ? "#111111" : "#60A5FA"}`
-                
+                headerTintColor: `${colorschema === "light" ? "#111111" : "#60A5FA"}`,
+                statusBarStyle: `${colorschema === "light" ? "dark" : "light"}`,
+                statusBarBackgroundColor: `${colorschema === "light" ? "#60A5FA" : "#121212"}`
               }}
             >
               <Stack.Screen name="index" options={{ headerShown: false }} />

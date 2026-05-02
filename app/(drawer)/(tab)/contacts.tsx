@@ -87,7 +87,7 @@ export default function ChatsScreen() {
 
         <View className="flex-row justify-between items-center">
           <Text className="text-gray-600 dark:text-gray-300 flex-1" numberOfLines={1}>
-            {item?.lastMessage}
+            {item?.lastMessage?.content}
           </Text>
           {item?.unreadCount > 0 && (
             <View className="bg-blue-500 rounded-full w-6 h-6 items-center justify-center ml-2">
@@ -105,7 +105,7 @@ export default function ChatsScreen() {
 
   return (
     <View
-      className="flex-1 bg-white dark:bg-black"
+      className="flex-1 bg-white dark:bg-black "
       style={{ backgroundColor: isDark ? '#181818' : '#ffffff' }}
     >
       {isLoading ? (

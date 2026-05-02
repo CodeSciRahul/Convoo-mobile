@@ -53,7 +53,6 @@ export default function DrawerLayout() {
                                 <Ionicons name="chatbox-outline" color={color} size={size} />
                             ),
                             drawerLabel: 'Chats',
-
                         }} />
                     <Drawer.Screen
                         name="profile"

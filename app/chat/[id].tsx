@@ -20,12 +20,13 @@ import { deleteGroup, getChats, leaveGroup } from '../../services/apiServices';
 import { cleanupSocketListeners, setupSocketListeners, socketHandlers } from "../../services/socketService";
 import { Group, ServerMessage } from '../../types';
 import { useReceiver } from '../../zustand/receiver.store';
-
+import { transformMessages } from '@/util/formatMessage';
+import { formatMessageType, formatLabelType } from '@/types';
 export default function ChatScreen() {
   const HEADER_HEIGHT = 56;
   const { id: receiverId } = useLocalSearchParams();
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<ServerMessage[]>([]);
+  const [messages, setMessages] = useState<formatMessageType[] | formatLabelType[]>([]);
   const [isReplyTo, setIsReplyTo] = useState<boolean>(false)
   const [selectedMessage, setSelectedMessage] = useState<ServerMessage | null>(null)
   const router = useRouter();
@@ -37,7 +38,7 @@ export default function ChatScreen() {
   const isOwner = (receiver?.receiver as Group)?.createdBy?._id === userInfo?._id
   const bottomSheetRef = useRef<BottomSheetRef>(null);
   const queryClient = useQueryClient()
-  const { data: chats, isLoading } = useQuery<ServerMessage[]>({
+  const { data: chats = [], isLoading } = useQuery<ServerMessage[]>({
     queryKey: ['chats', receiverId, selectionType],
     queryFn: () => {
       if (selectionType === 'group') {
@@ -75,18 +76,23 @@ export default function ChatScreen() {
   // set messages
   useEffect(() => {
     if (chats && !isLoading) {
-      setMessages(chats);
+      setMessages(transformMessages(chats));
     }
   }, [chats, isLoading]);
 
   // listen for new events or messages
   useEffect(() => {
-    setupSocketListeners(setMessages);
+    const lastMessageItem = [...messages]
+      .reverse()
+      .find((item) => item.type === "message");
+
+    const lastlabelDate = lastMessageItem?.data?.createdAt;
+    setupSocketListeners(setMessages, lastlabelDate as Date | string);
 
     return () => {
       cleanupSocketListeners();
     };
-  }, []);
+  }, [messages]);
 
 
   const sendMessage = () => {
@@ -165,7 +171,7 @@ export default function ChatScreen() {
             <View className="flex-1 flex-row items-center">
               <TouchableOpacity
                 className="mr-3"
-                onPress={() => router.back()}
+                onPress={() => router.navigate('/contacts')}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 activeOpacity={0.7}
               >
@@ -280,15 +286,21 @@ export default function ChatScreen() {
                 <FlatList
                   ref={flatListRef}
                   data={messages}
-                  keyExtractor={(item) => item._id}
+                  keyExtractor={(item) => item.id}
                   renderItem={({ item }) => (
-                    <Message
-                      item={item}
-                      key={item._id}
-                      setIsReplyTo={setIsReplyTo}
-                      selectedMessage={selectedMessage}
-                      setSelectedMessage={setSelectedMessage}
-                    />
+                    item.type === 'label' ? (
+                      <Text
+                        key={item.id}
+                        className="text-gray-600 dark:text-gray-300 font-medium text-center py-2">{item.text}</Text>
+                    ) : (
+                      <Message
+                        item={(item as formatMessageType)?.data as ServerMessage}
+                        key={item.id}
+                        setIsReplyTo={setIsReplyTo}
+                        selectedMessage={selectedMessage}
+                        setSelectedMessage={setSelectedMessage}
+                      />
+                    )
                   )}
                   className="flex-1 px-4 py-2"
                   // Hide the vertical scroll bar, for cleaner UI like WhatsApp

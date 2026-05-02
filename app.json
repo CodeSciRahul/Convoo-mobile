@@ -35,12 +35,20 @@
         "android.permission.READ_MEDIA_IMAGES"
       ],
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": true,
+      "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
       "statusBar": {
         "translucent": false,
         "backgroundColor": "#FFFFFF",
         "barStyle": "dark-content"
+      },
+      "splash":{
+        "backgroundColor": "#FFFFFF",
+        "resizeMode": "contain",
+        "dark": {
+          "backgroundColor": "#000000",
+          "resizeMode": "contain"
+        }
       }
     },
     "web": {

@@ -325,7 +325,8 @@ export default function CreateGroupScreen() {
   }
 
   return (
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 px-4 bg-white dark:bg-black">
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} 
+      className="flex-1 px-4 bg-white dark:bg-black">
         {renderProgressIndicator()}
         {currentStep === 1 ? renderStep1() : renderStep2()}
 

@@ -80,7 +80,14 @@ export interface User {
     email: string;
     mobile?: string | null;
     profilePicture: string;
-    lastMessage: string;
+    lastMessage: {
+      _id: string;
+    content?: string;
+    fileUrl?: string | null;
+    fileType?: string | null;
+    createdAt?: string;
+    messageType?: "private" | "group" | null;
+    };
     lastMessageTimestamp: string;
     unreadCount: number;
   }
@@ -348,4 +355,14 @@ export interface User {
     isaddLoading: boolean;
   }
 
-  
+  export interface formatMessageType {
+    type: "message",
+    data: ServerMessage,
+    id: string,
+  }
+
+  export interface formatLabelType {
+    type: "label",
+    text: string,
+    id: string,
+  }
