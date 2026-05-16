@@ -2,6 +2,7 @@ import axios from "axios";
 import { router } from "expo-router";
 import { Properties } from "../config/properties";
 import { clearAuthData, getToken } from "../util/store";
+console.log("Properties.API_BASE_URL", Properties.API_BASE_URL);
 
 const custom_axios = axios.create({
     baseURL: `${Properties.API_BASE_URL}/api`,
@@ -55,10 +56,8 @@ export const signin = async (email: string, password: string) => {
 export const signup = async (data: any) => {
     try {
         const response = await custom_axios.post("/register", data);
-        console.log("signup response", response.data);
         return response;
     } catch (error) {
-        console.log("signup error", error);
         throw error;
     }
 }
@@ -250,6 +249,18 @@ export const updateGroup = async (groupId: string, data: any) => {
         return response;
     } catch (error) {
         console.log("update group error", error);
+        throw error;
+    }
+}
+
+export const deleteMultipleParticipents = async (conversationIds: string[]) => {
+    try {
+        const response = await custom_axios.delete("/users/receivers", {
+            data: { conversationIds }
+        });
+        return response;
+    } catch (error) {
+        console.log("delete multiple participents error", error);
         throw error;
     }
 }

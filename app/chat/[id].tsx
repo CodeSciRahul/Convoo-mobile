@@ -178,8 +178,8 @@ export default function ChatScreen() {
                 <Ionicons name="arrow-back" size={24} color="#007AFF" />
               </TouchableOpacity>
               <View className="w-10 h-10 rounded-full bg-blue-500 items-center justify-center mr-3">
-                {receiver?.receiver?.profilePicture ? (
-                  <Image source={{ uri: receiver.receiver.profilePicture }} className="w-10 h-10 rounded-full" />
+                {receiver?.receiver?.profilePic ? (
+                  <Image source={{ uri: receiver.receiver.profilePic }} className="w-10 h-10 rounded-full" />
                 ) : (
                   <Text className="text-white font-semibold text-lg">
                     {receiver?.receiver?.name?.charAt(0) || 'U'}

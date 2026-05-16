@@ -22,8 +22,8 @@ export default function GroupsScreen() {
         router.push(`/chat/${item?._id}`);
       }}>
       <View className="w-12 h-12 rounded-full bg-blue-500 items-center justify-center mr-3">
-        {item.profilePicture ? (
-          <Image source={{ uri: item.profilePicture }} className="w-12 h-12 rounded-full" />
+        {item.profilePic ? (
+          <Image source={{ uri: item.profilePic }} className="w-12 h-12 rounded-full" />
         ) : (
           <Ionicons name="people" size={24} color="white" />
         )}
@@ -69,7 +69,7 @@ export default function GroupsScreen() {
           renderItem={renderGroupItem}
           showsVerticalScrollIndicator={false}
         />
-        <TouchableOpacity onPress={() => router.push('/group')} className='absolute bottom-10 right-10 p-4 bg-gray-200 dark:bg-gray-800 rounded-xl '>
+        <TouchableOpacity onPress={() => router.push('/group')} className='absolute bottom-28 right-10 p-4 bg-gray-200 dark:bg-gray-800 rounded-xl '>
           <Ionicons name="add" size={24} color="#007AFF" />
         </TouchableOpacity>
       </View>

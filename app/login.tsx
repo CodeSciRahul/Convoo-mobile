@@ -1,140 +1,291 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, useColorScheme, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import {
+    Alert,
+    Animated,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/input";
 import { signin } from "../services/apiServices";
 import { storeAuthData } from "../util/store";
+
+// ── Underline Input Field ──────────────────────────────────────────────────
+interface FieldProps {
+    label: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    placeholder: string;
+    value: string;
+    onChangeText: (t: string) => void;
+    secureTextEntry?: boolean;
+    keyboardType?: "default" | "email-address";
+    autoCapitalize?: "none" | "sentences";
+    autoCorrect?: boolean;
+    rightElement?: React.ReactNode;
+}
+
+function UnderlineField({
+    label,
+    icon,
+    placeholder,
+    value,
+    onChangeText,
+    secureTextEntry,
+    keyboardType = "default",
+    autoCapitalize = "sentences",
+    autoCorrect = true,
+    rightElement,
+}: FieldProps) {
+    const [focused, setFocused] = useState(false);
+    const lineAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        Animated.timing(lineAnim, {
+            toValue: focused ? 1 : 0,
+            duration: 220,
+            useNativeDriver: false,
+        }).start();
+    }, [focused]);
+
+    const lineWidth = lineAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ["0%", "100%"],
+    });
+
+    return (
+        <View className="mb-7">
+            {/* Label */}
+            <Text
+                className={`text-[10px] font-semibold tracking-widest uppercase mb-2 ${
+                    focused ? "text-indigo-400" : "text-slate-500"
+                }`}
+            >
+                {label}
+            </Text>
+
+            {/* Row */}
+            <View className="flex-row items-center pb-3 gap-3">
+                <Ionicons
+                    name={icon}
+                    size={16}
+                    color={focused ? "#818cf8" : "#334155"}
+                />
+                <TextInput
+                    className="flex-1 text-[15px] text-slate-100 p-0 m-0"
+                    placeholder={placeholder}
+                    placeholderTextColor="#1e293b"
+                    value={value}
+                    onChangeText={onChangeText}
+                    secureTextEntry={secureTextEntry}
+                    keyboardType={keyboardType}
+                    autoCapitalize={autoCapitalize}
+                    autoCorrect={autoCorrect}
+                    onFocus={() => setFocused(true)}
+                    onBlur={() => setFocused(false)}
+                />
+                {rightElement}
+            </View>
+
+            {/* Base underline */}
+            <View className="h-px bg-white/[0.07]" />
+
+            {/* Animated active underline */}
+            <Animated.View
+                style={{ width: lineWidth }}
+                className="h-px bg-indigo-500 absolute bottom-0 left-0"
+            />
+        </View>
+    );
+}
+
+// ── Main Screen ────────────────────────────────────────────────────────────
 export default function LoginScreen() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
-    const colorScheme = useColorScheme();
-    const isDark = colorScheme === 'dark';
 
+    const topAnim  = useRef(new Animated.Value(0)).current;
+    const heroAnim = useRef(new Animated.Value(0)).current;
+    const formAnim = useRef(new Animated.Value(0)).current;
 
-    const {mutate: signinMutation, isPending: isLoading} = useMutation({
-        mutationFn: async ({ email, password }: { email: string; password: string }) => 
+    useEffect(() => {
+        Animated.stagger(110, [
+            Animated.spring(topAnim,  { toValue: 1, useNativeDriver: true, tension: 65, friction: 11 }),
+            Animated.spring(heroAnim, { toValue: 1, useNativeDriver: true, tension: 65, friction: 11 }),
+            Animated.spring(formAnim, { toValue: 1, useNativeDriver: true, tension: 65, friction: 11 }),
+        ]).start();
+    }, []);
+
+    const slide = (anim: Animated.Value) => ({
+        opacity: anim,
+        transform: [
+            {
+                translateY: anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [26, 0],
+                }),
+            },
+        ],
+    });
+
+    const { mutate: signinMutation, isPending: isLoading } = useMutation({
+        mutationFn: async ({ email, password }: { email: string; password: string }) =>
             await signin(email, password),
         onSuccess: async (response) => {
-            const token = response.data.token;
-            const userInfo = response.data.user
-            await storeAuthData(token, userInfo);
-            router.replace("/(drawer)/(tab)/contacts")
+            await storeAuthData(response.data.token, response.data.user);
+            router.replace("/(drawer)/(tab)/contacts");
         },
         onError: (error: any) => {
-            console.error("Login error:", error);
             Alert.alert("Login Failed", error.response?.data?.message || "Something went wrong");
-        }
-    })
+        },
+    });
 
-    const handleLogin = async () => {
-        if (!email || !password) {
-            Alert.alert("Error", "Please fill in all fields");
-            return;
-        }
-
-        if (!email.includes("@")) {
-            Alert.alert("Error", "Please enter a valid email address");
-            return;
-        }
-
+    const handleLogin = () => {
+        if (!email || !password) return Alert.alert("Error", "Please fill in all fields");
+        if (!email.includes("@")) return Alert.alert("Error", "Please enter a valid email");
         signinMutation({ email, password });
     };
 
-    const handleSignUp = () => {
-        router.push("/signup");
-    };
-
     return (
-        <SafeAreaView className="flex-1 bg-white dark:bg-[#181818]">
-            <KeyboardAvoidingView 
+        <SafeAreaView className="flex-1 bg-[#07090F]">
+            <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 className="flex-1"
             >
-                <ScrollView 
+                <ScrollView
                     contentContainerStyle={{ flexGrow: 1 }}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
-                    className="dark:bg-[#181818] bg-white"
                 >
-                    <View className="flex-1 px-6 pt-8">
-                        {/* Header */}
-                        <View className="items-center">
-                            <View className="w-20 h-20 bg-blue-600 rounded-full items-center justify-center mb-4">
-                                <Ionicons name="chatbubbles" size={40} color="white" />
+                    <View className="flex-1 px-7">
+
+                        {/* ── Top bar ── */}
+                        <Animated.View
+                            style={slide(topAnim)}
+                            className="flex-row items-center justify-between pt-7"
+                        >
+                            {/* Logo */}
+                            <View className="flex-row items-center gap-2">
+                                <View className="w-9 h-9 rounded-[10px] bg-indigo-600 items-center justify-center">
+                                    <Ionicons name="chatbubbles" size={18} color="#fff" />
+                                </View>
+                                <Text className="text-white text-[17px] font-bold tracking-tight">
+                                    Convoo
+                                </Text>
                             </View>
-                            <Text className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Welcome Back</Text>
-                            <Text className="text-gray-600 dark:text-gray-400 text-center">
-                                Sign in to your account to continue
+
+                            {/* Secure badge */}
+                            <View className="flex-row items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-3 py-[5px]">
+                                <View className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                <Text className="text-emerald-300 text-[10px] font-semibold tracking-[2px]">
+                                    SECURE
+                                </Text>
+                            </View>
+                        </Animated.View>
+
+                        {/* ── Hero ── */}
+                        <Animated.View style={slide(heroAnim)} className="pt-10 pb-9">
+                            <Text className="text-indigo-400 text-[11px] font-semibold tracking-[2.5px] uppercase mb-3">
+                                Welcome back
                             </Text>
-                        </View>
+                            <Text className="text-white text-[36px] font-bold leading-tight tracking-tight mb-3">
+                                Sign in to{"\n"}
+                                <Text className="text-indigo-400">your account</Text>
+                            </Text>
+                            <Text className="text-slate-500 text-[14px] leading-relaxed">
+                                Pick up right where you left off
+                            </Text>
+                        </Animated.View>
 
-                        {/* Form */}
-                        <View className="flex-1 justify-center">
-                            <View className="space-y-6">
-                                <Input
-                                    placeholder="Enter your email"
-                                    value={email}
-                                    onChangeText={setEmail}
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                    autoCorrect={false}
-                                    placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
-                                    className="mb-4 py-2 text-gray-900 dark:text-gray-100"
-                                />
+                        {/* ── Form ── */}
+                        <Animated.View style={slide(formAnim)}>
 
-                                <View>
-                                    <Input
-                                        placeholder="Enter your password"
-                                        value={password}
-                                        onChangeText={setPassword}
-                                        secureTextEntry={!showPassword}
-                                        placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
-                                        className="mb-4 text-gray-900 dark:text-gray-100"
-                                    />
+                            <UnderlineField
+                                label="Email address"
+                                icon="mail-outline"
+                                placeholder="you@example.com"
+                                value={email}
+                                onChangeText={setEmail}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                            />
+
+                            <UnderlineField
+                                label="Password"
+                                icon="lock-closed-outline"
+                                placeholder="Enter your password"
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry={!showPassword}
+                                rightElement={
                                     <TouchableOpacity
                                         onPress={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-3"
+                                        activeOpacity={0.7}
                                     >
-                                        <Ionicons 
-                                            name={showPassword ? "eye-off" : "eye"} 
-                                            size={20} 
-                                            color={isDark ? '#9CA3AF' : '#6B7280'} 
+                                        <Ionicons
+                                            name={showPassword ? "eye-off-outline" : "eye-outline"}
+                                            size={18}
+                                            color="#475569"
                                         />
                                     </TouchableOpacity>
-                                </View>
+                                }
+                            />
 
-                                <TouchableOpacity className="self-end mb-6">
-                                    <Text className="text-blue-600 dark:text-blue-400 font-medium">
-                                        Forgot Password?
-                                    </Text>
-                                </TouchableOpacity>
+                            {/* Forgot password */}
+                            <TouchableOpacity
+                                className="self-end -mt-2 mb-9"
+                                activeOpacity={0.7}
+                            >
+                                <Text className="text-indigo-400 text-[12.5px] font-semibold">
+                                    Forgot password?
+                                </Text>
+                            </TouchableOpacity>
 
-                                <Button
-                                    onPress={handleLogin}
-                                    disabled={isLoading}
-                                    className="w-full  bg-blue-600 text-white"
+                            {/* Sign In button */}
+                            <TouchableOpacity
+                                onPress={handleLogin}
+                                disabled={isLoading}
+                                activeOpacity={0.82}
+                                className="rounded-2xl overflow-hidden mb-10"
+                            >
+                                <View
+                                    className={`flex-row items-center justify-between px-6 py-[17px] ${
+                                        isLoading ? "bg-indigo-800" : "bg-indigo-600"
+                                    }`}
                                 >
-                                    <Text className="text-white text-center font-bold">{isLoading ? "Signing In..." : "Sign In"}</Text>
-                                </Button>
-                            </View>
-                        </View>
+                                    <Text className="text-white text-[15px] font-bold tracking-wide">
+                                        {isLoading ? "Signing In…" : "Sign In"}
+                                    </Text>
+                                    {!isLoading && (
+                                        <View className="w-9 h-9 rounded-[10px] bg-white/20 items-center justify-center">
+                                            <Ionicons name="arrow-forward" size={15} color="#fff" />
+                                        </View>
+                                    )}
+                                </View>
+                            </TouchableOpacity>
 
-                        {/* Footer */}
-                        <View className="pb-8">
-                            <View className="flex-row items-center justify-center space-x-2">
-                                <Text className="text-gray-600 dark:text-gray-400">Don't have an account?</Text>
-                                <TouchableOpacity onPress={handleSignUp}>
-                                    <Text className="text-blue-600 dark:text-blue-400 font-semibold">
-                                        Sign Up
+                            {/* Sign up link */}
+                            <View className="flex-row items-center justify-center pb-8">
+                                <Text className="text-slate-500 text-[13px]">New here? </Text>
+                                <TouchableOpacity
+                                    onPress={() => router.push("/signup")}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text className="text-indigo-400 text-[13px] font-bold">
+                                        Create an account
                                     </Text>
                                 </TouchableOpacity>
                             </View>
-                        </View>
+
+                        </Animated.View>
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>

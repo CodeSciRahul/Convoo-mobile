@@ -3,6 +3,7 @@ import { Drawer } from "expo-router/drawer";
 import AuthGuard from "../../components/AuthGuard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useColorScheme } from "react-native";
+import { Text } from "react-native";
 
 export default function DrawerLayout() {
     const colorschema = useColorScheme()
@@ -61,16 +62,20 @@ export default function DrawerLayout() {
                             drawerIcon: ({ color, size }) => (
                                 <Ionicons name="person" color={color} size={size} />
                             )
-                        }} />
+                        }} 
+
+                        />
                     <Drawer.Screen
                         name="setting"
                         options={{
                             title: 'Setting',
                             drawerIcon: ({ color, size }) => (
                                 <Ionicons name="settings" color={color} size={size} />
-                            )
+                            ),
 
-                        }} />
+
+                        }} 
+                        />
                 </Drawer>
             </AuthGuard>
         </SafeAreaView>

@@ -12,6 +12,9 @@ import { Input } from '../../../components/ui/input';
 import { addUser, getReceivers } from '../../../services/apiServices';
 import { Receiver, ReceiversResponse } from '../../../types';
 import { useReceiver } from '../../../zustand/receiver.store';
+import * as Haptics from 'expo-haptics';
+import { useSelection } from '@/zustand/selection.store';
+
 
 export default function ChatsScreen() {
   const router = useRouter();
@@ -20,6 +23,9 @@ export default function ChatsScreen() {
   const snapPoints = useMemo(() => ['50%', '90%'], []);
   const [contact, setContact] = useState<string>('')
   const [bottomSheetOpen, setBottomSheetOpen] = useState(false)
+  // const [selectedContacts, setSelectedContacts] = useState<Receiver[]>([])
+  const { selectedContacts, setSelectedContacts } = useSelection();
+
 
   const bottomSheetRef = useRef<BottomSheetRef>(null);
   const colorschema = useColorScheme()
@@ -59,25 +65,60 @@ export default function ChatsScreen() {
     },
   });
 
+ const handleLongPress = (contact: Receiver) => {
+  Haptics.selectionAsync();
+  setSelectedContacts(
+    selectedContacts.includes(contact)
+      ? selectedContacts.filter((c) => c._id !== contact._id)
+      : [...selectedContacts, contact]
+  );
+};
+
+const handleSmallPress = (contact: Receiver) => {
+  if (selectedContacts.length > 0) {
+    Haptics.selectionAsync();
+    setSelectedContacts(
+      selectedContacts.includes(contact)
+        ? selectedContacts.filter((c) => c._id !== contact._id)
+        : [...selectedContacts, contact]
+    );
+  } else {
+    setReceiver({ receiver: contact, selectionType: 'private' });
+    router.push(`/chat/${contact._id}`);
+  }
+};
+
   const { setReceiver } = useReceiver()
 
   const renderChatItem = ({ item }: { item: Receiver }) => (
     <TouchableOpacity
-      className="flex-row items-center p-4 border-b border-gray-200 dark:border-gray-700"
+      className={`flex-row items-center p-4 border-b border-gray-200 dark:border-gray-700 ${selectedContacts.includes(item) ? 'bg-gray-100 dark:bg-gray-800' : ''}`}
       onPress={() => {
-        setReceiver({ receiver: item, selectionType: "private" })
-        router.push(`/chat/${item._id}`);
+        handleSmallPress(item)
+      }}
+      onLongPress={() => {
+        handleLongPress(item)
       }}
     >
-      <View className="w-12 h-12 rounded-full bg-blue-500 items-center justify-center mr-3">
-        {item?.profilePicture ? (
-          <Image source={{ uri: item.profilePicture }} className="w-12 h-12 rounded-full" />
-        ) : (
-          <Text className="text-white font-semibold text-lg rounded-full">
-            {item?.name?.charAt(0)}
-          </Text>
-        )}
-      </View>
+     <View className="w-12 h-12 rounded-full bg-blue-500 items-center justify-center mr-3 relative">
+  {item?.profilePic ? (
+    <Image
+      source={{ uri: item.profilePic }}
+      className="w-12 h-12 rounded-full"
+    />
+  ) : (
+    <Text className="text-white font-semibold text-lg rounded-full">
+      {item?.name?.charAt(0)}
+    </Text>
+  )}
+
+  {selectedContacts.includes(item) && (
+    <View className="absolute bottom-0 right-0">
+      <Ionicons name="checkmark-circle" size={20} color="#007AFF" />
+    </View>
+  )}
+</View>
+
 
       <View className="flex-1">
         <View className="flex-row justify-between items-center mb-1">
@@ -122,7 +163,7 @@ export default function ChatsScreen() {
         <TouchableOpacity onPress={() => { 
           setBottomSheetOpen(true); 
           requestAnimationFrame(() => bottomSheetRef.current?.present()); 
-          }} className={`${isDark ? 'bg-gray-800' : 'bg-gray-200'} absolute bottom-10 right-10 p-4 rounded-xl`}>
+          }} className={`${isDark ? 'bg-gray-800' : 'bg-gray-200'} absolute bottom-28 right-10 p-4 rounded-xl`}>
           <Ionicons name="add" size={24} color="#007AFF" />
         </TouchableOpacity>
       </View>

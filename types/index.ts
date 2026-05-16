@@ -68,7 +68,7 @@ export interface User {
     email: string;
     mobile?: string | null;
     password: string;
-  }
+  } 
   
   // =============================================================================
   // RECEIVER & CONTACT TYPES
@@ -79,7 +79,8 @@ export interface User {
     name: string;
     email: string;
     mobile?: string | null;
-    profilePicture: string;
+    profilePic: string;
+    conversationId: string;
     lastMessage: {
       _id: string;
     content?: string;
@@ -156,7 +157,7 @@ export interface User {
       email: string
     }
     description?: string | null;
-    profilePicture?: string | null;
+    profilePic?: string | null;
     settings?: GroupSettings;
     createdAt?: string;
     updatedAt?: string;
@@ -183,7 +184,7 @@ export interface User {
     _id: string;
     name: string;
     description?: string;
-    profilePicture?: string;
+    profilePic?: string;
     createdBy: {
       _id: string,
       name: string,
@@ -202,7 +203,7 @@ export interface User {
   export interface CreateGroupData {
     name: string;
     description?: string;
-    profilePicture?: string | null;
+    profilePic?: string | null;
     isPrivate?: boolean;
     allowMemberInvite?: boolean;
     adminOnlyMessages?: boolean;
@@ -212,7 +213,7 @@ export interface User {
   export interface UpdateGroupData {
     name?: string;
     description?: string;
-    profilePicture?: string;
+    profilePic?: string;
     settings?: GroupSettings;
   }
   
