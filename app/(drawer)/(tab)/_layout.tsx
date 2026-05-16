@@ -41,19 +41,16 @@
 //         // ></Tabs>
 //     )
 // }
-import { Ionicons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
-import { useColorScheme, View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { useSelection } from "@/zustand/selection.store";
 import { ActionBar } from "@/components/ActionBar";
-import { BottomTabBar } from "@react-navigation/bottom-tabs";
 import CustomTab from "@/components/customTab";
 import { deleteMultipleParticipents } from "@/services/apiServices";
+import { useSelection } from "@/zustand/selection.store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Tabs } from "expo-router";
+import { View } from "react-native";
 import Toast from "react-native-toast-message";
+
 export default function TabLayout() {
-  const colorschema = useColorScheme();
-  const isDark = colorschema === "dark";
   const { selectedContacts, clearSelection } = useSelection();
   const isSelecting = selectedContacts.length > 0;
   const queryClient = useQueryClient();
@@ -78,9 +75,9 @@ export default function TabLayout() {
   });
 
     const handleDelete = () => {
-        // your delete logic here
-        console.log("Delete:", selectedContacts);
-        deleteMultipleParticipentsMutation(selectedContacts.map((contact) => contact.conversationId));
+        deleteMultipleParticipentsMutation(
+            selectedContacts.map((contact) => contact.conversationId)
+        );
     };
 
   return (
@@ -96,10 +93,9 @@ export default function TabLayout() {
             count={selectedContacts.length}
             onDelete={handleDelete}
             onCancel={clearSelection}
-            isDark={isDark}
           />
         ) : (
-            <View className="flex-1 bg-white dark:bg-[#141414] absolute bottom-2 left-0 right-0">
+            <View className="absolute bottom-0 left-0 right-0">
                 <CustomTab {...props} />
             </View>
         )

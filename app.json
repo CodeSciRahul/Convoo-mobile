@@ -39,11 +39,11 @@
       "softwareKeyboardLayoutMode": "resize",
       "statusBar": {
         "translucent": false,
-        "backgroundColor": "#FFFFFF",
-        "barStyle": "dark-content"
+        "backgroundColor": "#07090F",
+        "barStyle": "light-content"
       },
       "splash":{
-        "backgroundColor": "#FFFFFF",
+        "backgroundColor": "#000000",
         "resizeMode": "contain",
         "dark": {
           "backgroundColor": "#000000",

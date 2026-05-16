@@ -1,413 +1,553 @@
-import { BottomSheetComponent, BottomSheetRef } from "@/components/ui/bottom-sheet";
-import { Label } from "@/components/ui/label";
-import { useUserInfo } from "@/hooks/useAuth";
-import { updateUserProfileMultipart } from "@/services/apiServices";
-import { storeUserInfo } from "@/util/store";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { BottomSheetComponent, BottomSheetRef } from '@/components/ui/bottom-sheet';
+import { useUserInfo } from '@/hooks/useAuth';
+import { updateUserProfileMultipart } from '@/services/apiServices';
+import { storeUserInfo } from '@/util/store';
+import { Ionicons } from '@expo/vector-icons';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
-import { LinearGradient } from "expo-linear-gradient";
-import * as React from "react";
-import { useEffect, useRef, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, useColorScheme, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Toast from "react-native-toast-message";
+import { LinearGradient } from 'expo-linear-gradient';
+import { useEffect, useRef, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import {
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
+
+const BG = '#07090F';
+
+interface UnderlineFieldProps {
+    label: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    placeholder: string;
+    value: string;
+    onChangeText: (t: string) => void;
+    keyboardType?: 'default' | 'email-address' | 'phone-pad';
+    autoCapitalize?: 'none' | 'sentences' | 'words';
+    autoCorrect?: boolean;
+    editable?: boolean;
+    error?: string;
+}
+
+function UnderlineField({
+    label,
+    icon,
+    placeholder,
+    value,
+    onChangeText,
+    keyboardType = 'default',
+    autoCapitalize = 'sentences',
+    autoCorrect = true,
+    editable = true,
+    error,
+}: UnderlineFieldProps) {
+    const [focused, setFocused] = useState(false);
+    const lineAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        Animated.timing(lineAnim, {
+            toValue: focused && editable ? 1 : 0,
+            duration: 220,
+            useNativeDriver: false,
+        }).start();
+    }, [focused, editable]);
+
+    const lineWidth = lineAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0%', '100%'],
+    });
+
+    return (
+        <View className="mb-6">
+            <Text
+                className={`text-[10px] font-semibold tracking-widest uppercase mb-2 ${
+                    focused && editable ? 'text-indigo-400' : 'text-slate-500'
+                }`}
+            >
+                {label}
+            </Text>
+            <View className="flex-row items-center pb-3 gap-3">
+                <Ionicons
+                    name={icon}
+                    size={16}
+                    color={focused && editable ? '#818cf8' : '#334155'}
+                />
+                <TextInput
+                    className={`flex-1 text-[15px] p-0 m-0 ${editable ? 'text-slate-100' : 'text-slate-500'}`}
+                    placeholder={placeholder}
+                    placeholderTextColor="#1e293b"
+                    value={value}
+                    onChangeText={onChangeText}
+                    keyboardType={keyboardType}
+                    autoCapitalize={autoCapitalize}
+                    autoCorrect={autoCorrect}
+                    editable={editable}
+                    onFocus={() => setFocused(true)}
+                    onBlur={() => setFocused(false)}
+                />
+            </View>
+            <View className="h-px bg-white/[0.07]" />
+            <Animated.View
+                style={{ width: lineWidth }}
+                className="h-px bg-indigo-500 absolute bottom-0 left-0"
+            />
+            {error ? <Text className="text-red-400 text-xs mt-2">{error}</Text> : null}
+        </View>
+    );
+}
 
 export default function ProfileScreen() {
-  const { data: userInfo } = useUserInfo()
-  const colorschema = useColorScheme()
+    const { data: userInfo } = useUserInfo();
+    const [image, setImage] = useState<string | undefined>(undefined);
+    const bottomSheetRef = useRef<BottomSheetRef>(null);
+    const queryClient = useQueryClient();
+    const insets = useSafeAreaInsets();
 
-  const [image, setImage] = useState<undefined | string>(undefined)
-  const BottomSheetRef = useRef<BottomSheetRef>(null)
-  const queryClient = useQueryClient()
+    const heroAnim = useRef(new Animated.Value(0)).current;
+    const formAnim = useRef(new Animated.Value(0)).current;
 
-  const insets = useSafeAreaInsets();
-  const contentInsets = {
-    top: insets.top,
-    bottom: Platform.select({
-      ios: insets.bottom,
-      android: insets.bottom + 24,
-    }),
-    left: 16,
-    right: 16,
-  };
+    useEffect(() => {
+        Animated.stagger(100, [
+            Animated.spring(heroAnim, { toValue: 1, useNativeDriver: true, tension: 65, friction: 11 }),
+            Animated.spring(formAnim, { toValue: 1, useNativeDriver: true, tension: 65, friction: 11 }),
+        ]).start();
+    }, []);
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'N/A';
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    } catch {
-      return dateString;
-    }
-  };
+    const slide = (anim: Animated.Value) => ({
+        opacity: anim,
+        transform: [
+            {
+                translateY: anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [20, 0],
+                }),
+            },
+        ],
+    });
 
-  const { control, handleSubmit, reset, formState: { errors, isDirty }, watch } = useForm({
-    defaultValues: {
-      name: '',
-      email: '',
-      mobile: ''
-    }
-  })
-  
-  useEffect(() => {
-    if (userInfo) {
-      reset({
-        name: userInfo.name || '',
-        email: userInfo.email || '',
-        mobile: userInfo.mobile || ''
-      });
-    }
-    setImage(userInfo?.profilePic)
-  }, [userInfo, reset]);
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return 'N/A';
+        try {
+            return new Date(dateString).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+            });
+        } catch {
+            return dateString;
+        }
+    };
 
-  const {mutate: updateProfile, isPending } = useMutation({
-    mutationFn: async (formData: FormData) => {
-      const response = await updateUserProfileMultipart(formData)
-      return response?.data
-    },
-    onSuccess: (data) => {
-      Toast.show({
-        type: "success",
-        text1: "Profile Updated Successfully"
-      })
-      storeUserInfo(data.user)
-      queryClient.invalidateQueries({
-        queryKey: ['auth', 'userInfo']
-      })
-    },
-  })
+    const {
+        control,
+        handleSubmit,
+        reset,
+        formState: { errors, isDirty },
+    } = useForm({
+        defaultValues: { name: '', email: '', mobile: '' },
+    });
 
-  const onSubmit = (data: {name: string, mobile: string, email: string}) => {
-    const formData = new FormData()
-    formData.append("name", data.name)
-    formData.append("email", data.email)
-    formData.append("mobile", data.mobile)
-    console.log("formdata",)
+    useEffect(() => {
+        if (userInfo) {
+            reset({
+                name: userInfo.name || '',
+                email: userInfo.email || '',
+                mobile: userInfo.mobile || '',
+            });
+        }
+        setImage(userInfo?.profilePic ?? undefined);
+    }, [userInfo, reset]);
 
-    // Attach image file if changed/selected
-    if (image && image !== (userInfo?.profilePic || undefined)) {
-      const fileName = image.split('/').pop() || 'photo.jpg'
-      const ext = fileName.split('.').pop()?.toLowerCase()
-      const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'png' ? 'image/png' : 'image/*'
+    const { mutate: updateProfile, isPending } = useMutation({
+        mutationFn: async (formData: FormData) => {
+            const response = await updateUserProfileMultipart(formData);
+            return response?.data;
+        },
+        onSuccess: (data) => {
+            Toast.show({ type: 'success', text1: 'Profile updated successfully' });
+            storeUserInfo(data.user);
+            queryClient.invalidateQueries({ queryKey: ['auth', 'userInfo'] });
+        },
+    });
 
-      formData.append('profilePic', {
-        uri: image,
-        name: fileName,
-        type: mime,
-      } as any)
-    }
-    // send to server
-    updateProfile(formData)
-  };
+    const hasImageChange = image !== (userInfo?.profilePic ?? undefined);
+    const hasChanges = isDirty || hasImageChange;
 
-  const pickImage = async() => {
-   const result =  await ImagePicker.launchImageLibraryAsync({
-    allowsEditing: true,
-    mediaTypes: ["images"],
-    aspect: [4, 3],
-    quality: 1,
-   })
+    const onSubmit = (data: { name: string; mobile: string; email: string }) => {
+        const formData = new FormData();
+        formData.append('name', data.name);
+        formData.append('email', data.email);
+        formData.append('mobile', data.mobile);
 
-   if(result.canceled) {
-    BottomSheetRef.current?.dismiss()
-    return
-   }
-   setImage(result.assets[0].uri)
-   BottomSheetRef.current?.dismiss()
-  }
+        if (image && hasImageChange) {
+            const fileName = image.split('/').pop() || 'photo.jpg';
+            const ext = fileName.split('.').pop()?.toLowerCase();
+            const mime =
+                ext === 'jpg' || ext === 'jpeg'
+                    ? 'image/jpeg'
+                    : ext === 'png'
+                      ? 'image/png'
+                      : 'image/*';
+            formData.append('profilePic', {
+                uri: image,
+                name: fileName,
+                type: mime,
+            } as unknown as Blob);
+        }
+        updateProfile(formData);
+    };
 
-  const openCamera = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    const pickImage = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            allowsEditing: true,
+            mediaTypes: ['images'],
+            aspect: [1, 1],
+            quality: 0.85,
+        });
+        bottomSheetRef.current?.dismiss();
+        if (!result.canceled) {
+            setImage(result.assets[0].uri);
+        }
+    };
 
-    if (status !== "granted") {
-      Alert.alert("Permission Required", "Camera permission is needed to use this feature.");
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 1,
-    })
-    if(!result.canceled) {
-      setImage(result.assets[0].uri)
-    }
-    BottomSheetRef.current?.dismiss()
+    const openCamera = async () => {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission Required', 'Camera permission is needed to use this feature.');
+            return;
+        }
+        const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85,
+        });
+        bottomSheetRef.current?.dismiss();
+        if (!result.canceled) {
+            setImage(result.assets[0].uri);
+        }
+    };
 
-  }
+    const displayImage = image ?? userInfo?.profilePic;
+    const initial = userInfo?.name?.charAt(0)?.toUpperCase() || '?';
 
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1"
-    >
-      <ScrollView
-        contentContainerStyle={{
-          paddingTop: 19,
-          paddingBottom: contentInsets.bottom,
-          paddingLeft: contentInsets.left,
-          paddingRight: contentInsets.right,
-          flexGrow: 1,
-          backgroundColor: `${colorschema === "light" ? "#FFFFFF" : "#181818"}`
-        }}
-        keyboardShouldPersistTaps="handled"
-        className="bg-background dark:bg-black flex-1"
-      >
-        {/* Profile Header Section */}
-        <View className="items-center mb-8">
-          <View className="relative">
-            {image ? (
-              <Image
-                source={{ uri: image }}
-                className="w-32 h-32 rounded-full border-4 border-primary/20 dark:border-primary/30"
-              />
-            ) : (
-              <View className="w-32 h-32 rounded-full overflow-hidden border-4 border-primary/20 dark:border-primary/30 shadow-lg">
-                <LinearGradient
-                  colors={['#3b82f6', '#9333ea']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
+    return (
+        <SafeAreaView className="flex-1" style={{ backgroundColor: BG }} edges={['left', 'right']}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                className="flex-1"
+                style={{ backgroundColor: BG }}
+            >
+                <ScrollView
+                    contentContainerStyle={{
+                        flexGrow: 1,
+                        paddingHorizontal: 24,
+                        paddingTop: 8,
+                        paddingBottom: insets.bottom + 24,
+                    }}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
                 >
-                  <Text className="text-white text-4xl font-bold">
-                    {userInfo?.name?.charAt(0)?.toUpperCase() || "?"}
-                  </Text>
-                </LinearGradient>
-              </View>
-            )}
-            <TouchableOpacity
-              className="absolute bottom-0 right-0 bg-primary rounded-full p-2 border-2 border-background shadow-md"
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                BottomSheetRef.current?.present()
-              }}
-            >
-              <Text className="text-primary-foreground text-xs font-semibold">✏️</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+                    {/* Hero */}
+                    <Animated.View style={slide(heroAnim)} className="items-center pt-4 pb-8">
+                        <Text className="text-indigo-400 text-[11px] font-semibold tracking-[2.5px] uppercase mb-6">
+                            Your profile
+                        </Text>
 
-        <View className="flex-1">
-          {/* Profile Information Section */}
-          <View className="space-y-6">
+                        <View className="relative mb-5">
+                            <LinearGradient
+                                colors={['#6366f1', '#4f46e5', '#7c3aed']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={{
+                                    width: 120,
+                                    height: 120,
+                                    borderRadius: 60,
+                                    padding: 3,
+                                }}
+                            >
+                                <View
+                                    className="flex-1 rounded-full overflow-hidden bg-[#0D1117] items-center justify-center"
+                                >
+                                    {displayImage ? (
+                                        <Image
+                                            source={{ uri: displayImage }}
+                                            style={{ width: 114, height: 114, borderRadius: 57 }}
+                                        />
+                                    ) : (
+                                        <LinearGradient
+                                            colors={['#4f46e5', '#7c3aed']}
+                                            style={{
+                                                width: 114,
+                                                height: 114,
+                                                borderRadius: 57,
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                            }}
+                                        >
+                                            <Text className="text-white text-4xl font-bold">
+                                                {initial}
+                                            </Text>
+                                        </LinearGradient>
+                                    )}
+                                </View>
+                            </LinearGradient>
 
-            <Label className="text-sm font-semibold text-muted-foreground mb-2">
-              Display Name
-            </Label>
-            <Controller
-              control={control}
-              name="name"
-              rules={{ required: "Name is required" }}
-              render={({ field: { value, onChange } }) => {
-                return (
-                  <>
-                  <TextInput
-                      value={value}
-                      onChangeText={onChange}
-                      placeholder="Enter your name"
-                      className="border-b-2 border-blue-400 bg-blue-50 dark:bg-slate-800 p-4 rounded-md text-md text-slate-900 dark:text-slate-100"
-                      placeholderTextColor={colorschema === 'dark' ? '#9CA3AF' : '#6B7280'}
-                    />
-                    {errors.name && (
-                      <Text className="text-red-500 text-xs mt-1">{errors.name.message}</Text>
-                    )}
-                  </>
-                );
-              }}
-            />
-          </View>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    bottomSheetRef.current?.present();
+                                }}
+                                activeOpacity={0.85}
+                                className="absolute bottom-0 right-0"
+                            >
+                                <LinearGradient
+                                    colors={['#6366f1', '#4f46e5']}
+                                    style={{
+                                        width: 36,
+                                        height: 36,
+                                        borderRadius: 18,
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        borderWidth: 3,
+                                        borderColor: BG,
+                                    }}
+                                >
+                                    <Ionicons name="camera" size={16} color="#fff" />
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        </View>
 
-          <View className="my-2">
-            <Label className="text-sm font-semibold text-muted-foreground mb-2">
-              Email
-            </Label>
-            <Controller
-              control={control}
-              name="email"
-              rules={{
-                required: "Email is required", pattern: {
-                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                  message: "Invalid email format"
-                }
-              }}
-              render={({ field: { value, onChange } }) => {
-                return (
-                  <>
-                    <TextInput
-                      value={value}
-                      onChangeText={onChange}
-                      placeholder="Enter your email"
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      className="border-b-2 border-blue-400 bg-blue-50 dark:bg-slate-800 p-4 rounded-md text-md text-slate-900 dark:text-slate-100"
-                      placeholderTextColor={colorschema === 'dark' ? '#9CA3AF' : '#6B7280'}
-                    />
-                    {errors.email && (
-                      <Text className="text-red-500 text-xs mt-1">{errors.email.message}</Text>
-                    )}
-                  </>
-                );
-              }}
-            />
-          </View>
+                        <Text className="text-white text-2xl font-bold tracking-tight">
+                            {userInfo?.name || 'User'}
+                        </Text>
+                        <Text className="text-slate-500 text-sm mt-1">{userInfo?.email}</Text>
+                    </Animated.View>
 
-          <View className="my-2">
-            <Label className="text-sm font-semibold text-muted-foreground mb-2">
-              Mobile Number
-            </Label>
-            <Controller
-              control={control}
-              name="mobile"
-              rules={{
-                pattern: {
-                  value: /^[6-9]\d{9}$/,
-                  message: "Invalid mobile number"
-                }
-              }}
-              render={({ field: { value, onChange } }) => {
-                return (
-                  <>
-                    <TextInput
-                      value={value}
-                      onChangeText={onChange}
-                      placeholder="Enter your mobile number"
-                      keyboardType="phone-pad"
-                      className="border-b-2 border-blue-400 bg-blue-50 dark:bg-slate-800 p-4 rounded-md text-md text-slate-900 dark:text-slate-100"
-                      placeholderTextColor={colorschema === 'dark' ? '#9CA3AF' : '#6B7280'}
-                    />
-                    {errors.mobile && (
-                      <Text className="text-red-500 text-xs mt-1">{errors.mobile.message}</Text>
-                    )}
-                  </>
-                );
-              }}
-            />
-          </View>
+                    {/* Form */}
+                    <Animated.View style={slide(formAnim)}>
+                        <View className="bg-[#12151F] border border-white/[0.08] rounded-2xl px-5 pt-5 pb-2 mb-5">
+                            <Text className="text-white text-[15px] font-bold mb-1">
+                                Personal details
+                            </Text>
+                            <Text className="text-slate-500 text-xs mb-4">
+                                Update how others see you on Convoo
+                            </Text>
 
-          {/* Account Info Section */}
-          <View className="bg-muted/30 dark:bg-muted/20 rounded-xl p-4 border border-border/50">
-            <Text className="text-xs font-medium text-muted-foreground mb-2">
-              ACCOUNT INFORMATION
-            </Text>
-            <View className="flex-row items-center justify-between mt-2">
-              <Text className="text-sm text-slate-600 dark:text-slate-400">
-                Member since
-              </Text>
-              <Text className="text-sm font-medium text-foreground">
-                {formatDate(userInfo?.createdAt)}
-              </Text>
-            </View>
-          </View>
+                            <Controller
+                                control={control}
+                                name="name"
+                                rules={{ required: 'Name is required' }}
+                                render={({ field: { value, onChange } }) => (
+                                    <UnderlineField
+                                        label="Display name"
+                                        icon="person-outline"
+                                        placeholder="Your name"
+                                        value={value}
+                                        onChangeText={onChange}
+                                        autoCapitalize="words"
+                                        autoCorrect={false}
+                                        error={errors.name?.message}
+                                    />
+                                )}
+                            />
 
-        </View>
-        {/* Edit Profile Button */}
-        {(isDirty || image !== (userInfo?.profilePic)) && <View className="flex flex-row gap-3">
-          <TouchableOpacity
-            className={`bg-slate-200 dark:bg-slate-700 w-1/2 rounded-xl p-4 mt-6 mb-4 shadow-md active:bg-slate-300 dark:active:bg-slate-600 ${isPending && "opacity-50"}`}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              reset()
-              setImage(userInfo?.profilePic)
-            }}
-            disabled={isPending}
-          >
-            <Text className="text-slate-700 dark:text-slate-200 text-center font-semibold text-base">
-              Cancel
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className="bg-indigo-600 dark:bg-indigo-500 w-1/2 rounded-xl p-4 mt-6 mb-4 shadow-md active:bg-indigo-700 dark:active:bg-indigo-600"
-            onPress={handleSubmit(onSubmit)}
-          >
-            {!isPending ? <Text className="text-white text-center font-semibold text-base">
-              Update
-            </Text> : (
-              <ActivityIndicator className="text-white"/>
-            )}
-          </TouchableOpacity>
-        </View>}
-      </ScrollView>
+                            <Controller
+                                control={control}
+                                name="email"
+                                rules={{
+                                    required: 'Email is required',
+                                    pattern: {
+                                        value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                                        message: 'Invalid email format',
+                                    },
+                                }}
+                                render={({ field: { value, onChange } }) => (
+                                    <UnderlineField
+                                        label="Email address"
+                                        icon="mail-outline"
+                                        placeholder="you@example.com"
+                                        value={value}
+                                        onChangeText={onChange}
+                                        keyboardType="email-address"
+                                        autoCapitalize="none"
+                                        autoCorrect={false}
+                                        error={errors.email?.message}
+                                    />
+                                )}
+                            />
 
-      <BottomSheetComponent
-        ref={BottomSheetRef}
-        snapPoints={["60%"]}
-      >
-        <View className="px-6 pb-4">
-          {/* Header */}
-          <View className="items-center mb-6">
-            <Text className="text-xl font-bold text-gray-900 dark:text-gray-100">
-              Change Profile Picture
-            </Text>
-            <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Choose an option to update your profile photo
-            </Text>
-          </View>
+                            <Controller
+                                control={control}
+                                name="mobile"
+                                rules={{
+                                    pattern: {
+                                        value: /^[6-9]\d{9}$/,
+                                        message: 'Invalid mobile number',
+                                    },
+                                }}
+                                render={({ field: { value, onChange } }) => (
+                                    <UnderlineField
+                                        label="Mobile number"
+                                        icon="call-outline"
+                                        placeholder="10-digit number"
+                                        value={value}
+                                        onChangeText={onChange}
+                                        keyboardType="phone-pad"
+                                        autoCapitalize="none"
+                                        error={errors.mobile?.message}
+                                    />
+                                )}
+                            />
+                        </View>
 
-          {/* Options Container */}
-          <View className="flex-row gap-4 justify-center">
-            {/* Camera Option */}
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                openCamera()
-              }}
-              className="flex-1 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-2xl p-6 items-center justify-center shadow-lg active:opacity-80"
-              style={{
-                backgroundColor: '#3b82f6',
-                shadowColor: '#3b82f6',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 8,
-              }}
-            >
-              <View className="w-16 h-16 bg-white/20 rounded-full items-center justify-center mb-3">
-                <Text className="text-3xl">📷</Text>
-              </View>
-              <Text className="text-white font-semibold text-base mt-2">
-                Camera
-              </Text>
-              <Text className="text-white/80 text-xs mt-1 text-center">
-                Take a photo
-              </Text>
-            </TouchableOpacity>
+                        {/* Account info */}
+                        <View className="bg-white/[0.04] border border-white/[0.08] rounded-2xl p-4 mb-6">
+                            <View className="flex-row items-center gap-2 mb-3">
+                                <Ionicons name="shield-checkmark-outline" size={16} color="#818cf8" />
+                                <Text className="text-[10px] font-semibold tracking-widest uppercase text-slate-500">
+                                    Account
+                                </Text>
+                            </View>
+                            <View className="flex-row items-center justify-between py-2">
+                                <Text className="text-slate-500 text-sm">Member since</Text>
+                                <Text className="text-slate-200 text-sm font-medium">
+                                    {formatDate(userInfo?.createdAt)}
+                                </Text>
+                            </View>
+                            <View className="h-px bg-white/[0.06] my-1" />
+                            <View className="flex-row items-center justify-between py-2">
+                                <Text className="text-slate-500 text-sm">Account ID</Text>
+                                <Text
+                                    className="text-slate-400 text-xs font-mono"
+                                    numberOfLines={1}
+                                >
+                                    {userInfo?._id?.slice(-8) ?? '—'}
+                                </Text>
+                            </View>
+                        </View>
 
-            {/* Gallery Option */}
-            <TouchableOpacity
-              onPress={async () => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                await pickImage()
-              }}
-              className="flex-1 bg-gradient-to-br from-purple-500 to-purple-600 dark:from-purple-600 dark:to-purple-700 rounded-2xl p-6 items-center justify-center shadow-lg active:opacity-80"
-              style={{
-                backgroundColor: '#9333ea',
-                shadowColor: '#9333ea',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 8,
-              }}
-            >
-              <View className="w-16 h-16 bg-white/20 rounded-full items-center justify-center mb-3">
-                <Text className="text-3xl">🖼️</Text>
-              </View>
-              <Text className="text-white font-semibold text-base mt-2">
-                Gallery
-              </Text>
-              <Text className="text-white/80 text-xs mt-1 text-center">
-                Choose from photos
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </BottomSheetComponent>
+                        {/* Actions */}
+                        {hasChanges && (
+                            <View className="flex-row gap-3">
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                        reset();
+                                        setImage(userInfo?.profilePic ?? undefined);
+                                    }}
+                                    disabled={isPending}
+                                    activeOpacity={0.8}
+                                    className="flex-1 rounded-2xl border border-white/10 bg-white/[0.06] py-[17px] items-center"
+                                >
+                                    <Text className="text-slate-300 font-bold text-[15px]">
+                                        Discard
+                                    </Text>
+                                </TouchableOpacity>
 
-    </KeyboardAvoidingView>
+                                <TouchableOpacity
+                                    onPress={handleSubmit(onSubmit)}
+                                    disabled={isPending}
+                                    activeOpacity={0.82}
+                                    className="flex-1 rounded-2xl overflow-hidden"
+                                >
+                                    <View
+                                        className={`flex-row items-center justify-center py-[17px] gap-2 ${
+                                            isPending ? 'bg-indigo-800' : 'bg-indigo-600'
+                                        }`}
+                                    >
+                                        {isPending ? (
+                                            <ActivityIndicator color="#fff" size="small" />
+                                        ) : (
+                                            <>
+                                                <Text className="text-white font-bold text-[15px]">
+                                                    Save changes
+                                                </Text>
+                                                <Ionicons name="checkmark" size={18} color="#fff" />
+                                            </>
+                                        )}
+                                    </View>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    </Animated.View>
+                </ScrollView>
 
-  );
+                <BottomSheetComponent 
+                ref={bottomSheetRef} 
+                snapPoints={['42%']}
+                >
+                    <View className="px-6 pb-6 bg-[#111827]">
+                        <View className="items-center mb-6">
+                            <Text className="text-white text-lg font-bold">Change photo</Text>
+                            <Text className="text-slate-500 text-sm mt-1 text-center">
+                                Take a new photo or choose from your gallery
+                            </Text>
+                        </View>
+
+                        <View className="flex-row gap-3">
+                            <TouchableOpacity
+                                onPress={() => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                    openCamera();
+                                }}
+                                activeOpacity={0.85}
+                                className="flex-1 rounded-2xl overflow-hidden"
+                            >
+                                <LinearGradient
+                                    colors={['#4f46e5', '#6366f1']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={{ padding: 20, alignItems: 'center' }}
+                                >
+                                    <View className="w-14 h-14 rounded-2xl bg-white/15 items-center justify-center mb-3">
+                                        <Ionicons name="camera-outline" size={28} color="#fff" />
+                                    </View>
+                                    <Text className="text-white font-bold text-base">Camera</Text>
+                                    <Text className="text-indigo-200/70 text-xs mt-1">
+                                        Take a photo
+                                    </Text>
+                                </LinearGradient>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={() => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                    pickImage();
+                                }}
+                                activeOpacity={0.85}
+                                className="flex-1 rounded-2xl overflow-hidden"
+                            >
+                                <LinearGradient
+                                    colors={['#7c3aed', '#6366f1']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={{ padding: 20, alignItems: 'center' }}
+                                >
+                                    <View className="w-14 h-14 rounded-2xl bg-white/15 items-center justify-center mb-3">
+                                        <Ionicons name="images-outline" size={28} color="#fff" />
+                                    </View>
+                                    <Text className="text-white font-bold text-base">Gallery</Text>
+                                    <Text className="text-indigo-200/70 text-xs mt-1">
+                                        Choose existing
+                                    </Text>
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </BottomSheetComponent>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
+    );
 }

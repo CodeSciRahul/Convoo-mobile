@@ -1,254 +1,297 @@
 import { useUserInfo } from '@/hooks/useAuth';
 import { Group, GroupMember } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
-import { Image, ScrollView, View } from 'react-native';
-import { Text } from './ui/text';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Image, ScrollView, Text, View } from 'react-native';
 
 interface GroupInfoProps {
-  group: Group;
+    group: Group;
+}
+
+function InfoRow({
+    icon,
+    iconColor,
+    title,
+    value,
+    isLast,
+}: {
+    icon: keyof typeof Ionicons.glyphMap;
+    iconColor: string;
+    title: string;
+    value: string;
+    isLast?: boolean;
+}) {
+    return (
+        <View
+            className={`flex-row items-center py-3.5 ${!isLast ? 'border-b border-white/[0.06]' : ''}`}
+        >
+            <View className="w-10 h-10 rounded-xl bg-indigo-500/10 items-center justify-center mr-3">
+                <Ionicons name={icon} size={18} color={iconColor} />
+            </View>
+            <View className="flex-1">
+                <Text className="text-slate-100 text-[14px] font-semibold">{title}</Text>
+                <Text className="text-slate-500 text-xs mt-0.5 leading-relaxed">{value}</Text>
+            </View>
+        </View>
+    );
+}
+
+function MemberItem({
+    member,
+    isCurrentUser,
+    isOwner,
+}: {
+    member: GroupMember;
+    isCurrentUser?: boolean;
+    isOwner?: boolean;
+}) {
+    const initial = member.user.name?.charAt(0)?.toUpperCase() || 'U';
+
+    return (
+        <View className="flex-row items-center py-3 mb-2 rounded-2xl bg-white/[0.04] border border-white/[0.06] px-3">
+            <LinearGradient
+                colors={['#6366f1', '#4f46e5']}
+                style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    padding: 2,
+                    marginRight: 12,
+                }}
+            >
+                <View className="flex-1 rounded-full overflow-hidden bg-[#0D1117] items-center justify-center">
+                    {member.user?.profilePic ? (
+                        <Image
+                            source={{ uri: member.user.profilePic }}
+                            style={{ width: 40, height: 40, borderRadius: 20 }}
+                        />
+                    ) : (
+                        <Text className="text-white font-bold text-base">{initial}</Text>
+                    )}
+                </View>
+            </LinearGradient>
+
+            <View className="flex-1 min-w-0">
+                <View className="flex-row items-center flex-wrap gap-1.5">
+                    <Text className="text-slate-100 text-[15px] font-semibold" numberOfLines={1}>
+                        {member.user.name || 'Unknown'}
+                    </Text>
+                    {isCurrentUser && (
+                        <View className="bg-indigo-500/20 border border-indigo-500/30 px-2 py-0.5 rounded-md">
+                            <Text className="text-indigo-300 text-[10px] font-bold">YOU</Text>
+                        </View>
+                    )}
+                </View>
+                <Text className="text-slate-500 text-xs mt-0.5" numberOfLines={1}>
+                    {member.user.email}
+                </Text>
+            </View>
+
+            <View className="flex-row items-center gap-1.5 ml-1">
+                {isOwner && (
+                    <View className="flex-row items-center bg-amber-500/15 border border-amber-500/25 px-2 py-1 rounded-lg">
+                        <Ionicons name="star" size={12} color="#fbbf24" />
+                        <Text className="text-amber-300 text-[10px] font-bold ml-0.5">Owner</Text>
+                    </View>
+                )}
+                {member.role === 'admin' && !isOwner && (
+                    <View className="flex-row items-center bg-violet-500/15 border border-violet-500/25 px-2 py-1 rounded-lg">
+                        <Ionicons name="shield-checkmark" size={12} color="#a78bfa" />
+                        <Text className="text-violet-300 text-[10px] font-bold ml-0.5">Admin</Text>
+                    </View>
+                )}
+            </View>
+        </View>
+    );
 }
 
 export default function GroupInfo({ group }: GroupInfoProps) {
-  const { data: userInfo } = useUserInfo();
-  const members = group.members || [];
-  const admins = members.filter((m) => m.role === 'admin');
-  const isOwner = group.createdBy._id === userInfo?._id
-  const participants = members.filter((m) => m.role === 'participant');
-  const currentUserMember = members.find((m) => m.user._id === userInfo?._id);
+    const { data: userInfo } = useUserInfo();
+    const members = group.members || [];
+    const admins = members.filter((m) => m.role === 'admin');
+    const participants = members.filter((m) => m.role === 'participant');
+    const initial = group.name?.charAt(0)?.toUpperCase() || 'G';
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+        });
+    };
 
-  return (
-    <ScrollView 
-      className="flex-1"
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header Section */}
-      <View className="items-center px-6 pt-4 pb-6 border-b border-gray-100 dark:border-gray-800">
-        {/* Profile Picture */}
-        <View className="mb-4">
-          {group.profilePicture ? (
-            <Image
-              source={{ uri: group.profilePicture }}
-              className="w-24 h-24 rounded-full"
-            />
-          ) : (
-            <View className="w-24 h-24 rounded-full bg-blue-500 items-center justify-center">
-              <Text className="text-white text-4xl font-bold">
-                {group.name?.charAt(0)?.toUpperCase() || 'G'}
-              </Text>
-            </View>
-          )}
-        </View>
+    return (
+        <ScrollView
+            className="flex-1"
+            style={{ backgroundColor: '#12151F' }}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 28 }}
+        >
+            {/* Hero */}
+            <View className="items-center px-6 pt-2 pb-6">
+                <LinearGradient
+                    colors={['#7c3aed', '#4f46e5', '#6366f1']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{
+                        width: 96,
+                        height: 96,
+                        borderRadius: 48,
+                        padding: 3,
+                        marginBottom: 14,
+                    }}
+                >
+                    <View className="flex-1 rounded-full overflow-hidden bg-[#0D1117] items-center justify-center">
+                        {group.profilePic ? (
+                            <Image
+                                source={{ uri: group.profilePic }}
+                                style={{ width: 90, height: 90, borderRadius: 45 }}
+                            />
+                        ) : (
+                            <LinearGradient
+                                colors={['#4f46e5', '#7c3aed']}
+                                style={{
+                                    width: 90,
+                                    height: 90,
+                                    borderRadius: 45,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}
+                            >
+                                <Text className="text-white text-4xl font-bold">{initial}</Text>
+                            </LinearGradient>
+                        )}
+                    </View>
+                </LinearGradient>
 
-        {/* Group Name */}
-        <Text className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2 text-center">
-          {group.name}
-        </Text>
-
-        {/* Description */}
-        {group.description && (
-          <Text className="text-sm text-gray-600 dark:text-gray-300 text-center px-4">
-            {group.description}
-          </Text>
-        )}
-
-        {/* Member Count */}
-        <View className="flex-row items-center mt-4 bg-blue-50 px-4 py-2 rounded-full">
-          <Ionicons name="people" size={16} color="#007AFF" />
-          <Text className="text-sm font-semibold text-blue-600 ml-2">
-            {members.length} {members.length === 1 ? 'Member' : 'Members'}
-          </Text>
-        </View>
-      </View>
-
-      {/* Settings Section */}
-      <View className="px-6 py-5 border-b border-gray-100 dark:border-gray-800">
-        <Text className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Group Settings</Text>
-        
-        <View>
-          {/* Privacy Setting */}
-          <View className="flex-row items-center justify-between py-2 mb-3">
-            <View className="flex-row items-center flex-1">
-              <View className="w-10 h-10 rounded-full bg-purple-100 items-center justify-center mr-3">
-                <Ionicons 
-                  name={group.settings?.isPrivate ? 'lock-closed' : 'lock-open'} 
-                  size={20} 
-                  color={group.settings?.isPrivate ? '#8B5CF6' : '#10B981'} 
-                />
-              </View>
-              <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-900 dark:text-gray-100">Privacy</Text>
-                <Text className="text-sm text-gray-500 dark:text-gray-400">
-                  {group.settings?.isPrivate ? 'Only admin can edit group details' : 'Member can edit group details'}
+                <Text className="text-indigo-400 text-[10px] font-semibold tracking-[2.5px] uppercase mb-2">
+                    Group info
                 </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Member Invite Setting */}
-          <View className="flex-row items-center justify-between py-2 mb-3">
-            <View className="flex-row items-center flex-1">
-              <View className="w-10 h-10 rounded-full bg-green-100 items-center justify-center mr-3">
-                <Ionicons 
-                  name={group.settings?.allowMemberInvite ? 'person-add' : 'person-remove'} 
-                  size={20} 
-                  color={group.settings?.allowMemberInvite ? '#10B981' : '#EF4444'} 
-                />
-              </View>
-              <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-900 dark:text-gray-100">Member Invites</Text>
-                <Text className="text-sm text-gray-500 dark:text-gray-400">
-                  {group.settings?.allowMemberInvite ? 'Members can invite' : 'Only admins can invite'}
+                <Text className="text-white text-2xl font-bold tracking-tight text-center">
+                    {group.name}
                 </Text>
-              </View>
-            </View>
-          </View>
 
-          {/* Message Permissions */}
-          <View className="flex-row items-center justify-between py-2 mb-3">
-            <View className="flex-row items-center flex-1">
-              <View className="w-10 h-10 rounded-full bg-orange-100 items-center justify-center mr-3">
-                <Ionicons 
-                  name={group.settings?.adminOnlyMessages ? 'chatbubble-ellipses' : 'chatbubbles'} 
-                  size={20} 
-                  color={group.settings?.adminOnlyMessages ? '#F97316' : '#10B981'} 
-                />
-              </View>
-              <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-900 dark:text-gray-100">Messages</Text>
-                <Text className="text-sm text-gray-500 dark:text-gray-400">
-                  {group.settings?.adminOnlyMessages ? 'Only admins can send' : 'All members can send'}
+                {group.description ? (
+                    <Text className="text-slate-400 text-sm text-center mt-2 px-4 leading-relaxed">
+                        {group.description}
+                    </Text>
+                ) : null}
+
+                <View className="flex-row items-center mt-4 bg-indigo-500/15 border border-indigo-500/25 rounded-full px-4 py-2 gap-2">
+                    <Ionicons name="people" size={16} color="#818cf8" />
+                    <Text className="text-indigo-300 text-sm font-semibold">
+                        {members.length} {members.length === 1 ? 'member' : 'members'}
+                    </Text>
+                </View>
+
+                <View className="flex-row items-center mt-3 gap-2">
+                    <Ionicons name="person-circle-outline" size={14} color="#64748b" />
+                    <Text className="text-slate-500 text-xs">
+                        Created by {group.createdBy?.name || 'Unknown'}
+                    </Text>
+                </View>
+            </View>
+
+            {/* Settings */}
+            <View className="px-4 mb-4">
+                <Text className="text-[10px] font-semibold tracking-widest uppercase text-slate-500 mb-3 px-2">
+                    Permissions
                 </Text>
-              </View>
+                <View className="bg-white/[0.04] border border-white/[0.08] rounded-2xl px-4">
+                    <InfoRow
+                        icon={group.settings?.isPrivate ? 'lock-closed' : 'lock-open'}
+                        iconColor={group.settings?.isPrivate ? '#a78bfa' : '#34d399'}
+                        title="Privacy"
+                        value={
+                            group.settings?.isPrivate
+                                ? 'Only admins can edit group details'
+                                : 'Members can edit group details'
+                        }
+                    />
+                    <InfoRow
+                        icon={group.settings?.allowMemberInvite ? 'person-add' : 'person-remove'}
+                        iconColor={group.settings?.allowMemberInvite ? '#34d399' : '#f87171'}
+                        title="Member invites"
+                        value={
+                            group.settings?.allowMemberInvite
+                                ? 'Members can invite others'
+                                : 'Only admins can invite'
+                        }
+                    />
+                    <InfoRow
+                        icon={
+                            group.settings?.adminOnlyMessages
+                                ? 'chatbubble-ellipses'
+                                : 'chatbubbles'
+                        }
+                        iconColor={group.settings?.adminOnlyMessages ? '#fb923c' : '#34d399'}
+                        title="Messages"
+                        value={
+                            group.settings?.adminOnlyMessages
+                                ? 'Only admins can send messages'
+                                : 'All members can send messages'
+                        }
+                    />
+                    {group.createdAt && (
+                        <InfoRow
+                            icon="calendar-outline"
+                            iconColor="#94a3b8"
+                            title="Created"
+                            value={formatDate(group.createdAt)}
+                            isLast
+                        />
+                    )}
+                </View>
             </View>
-          </View>
 
-          {/* Created Date */}
-          {group.createdAt && (
-            <View className="flex-row items-center py-2">
-              <View className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center mr-3">
-                <Ionicons name="calendar" size={20} color="#6B7280" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-900 dark:text-gray-100">Created</Text>
-                <Text className="text-sm text-gray-500 dark:text-gray-400">{formatDate(group.createdAt)}</Text>
-              </View>
+            {/* Members */}
+            <View className="px-4">
+                <View className="flex-row items-center justify-between mb-3 px-2">
+                    <Text className="text-[10px] font-semibold tracking-widest uppercase text-slate-500">
+                        Members
+                    </Text>
+                    <Text className="text-slate-600 text-xs">{members.length} total</Text>
+                </View>
+
+                {admins.length > 0 && (
+                    <View className="mb-4">
+                        <Text className="text-indigo-400/90 text-xs font-semibold mb-2 px-2">
+                            Administrators · {admins.length}
+                        </Text>
+                        {admins.map((member) => (
+                            <MemberItem
+                                key={member._id}
+                                member={member}
+                                isCurrentUser={member.user._id === userInfo?._id}
+                                isOwner={member.user._id === group.createdBy._id}
+                            />
+                        ))}
+                    </View>
+                )}
+
+                {participants.length > 0 && (
+                    <View>
+                        <Text className="text-slate-500 text-xs font-semibold mb-2 px-2">
+                            Participants · {participants.length}
+                        </Text>
+                        {participants.map((member) => (
+                            <MemberItem
+                                key={member._id}
+                                member={member}
+                                isCurrentUser={member.user._id === userInfo?._id}
+                            />
+                        ))}
+                    </View>
+                )}
+
+                {members.length === 0 && (
+                    <View className="items-center py-10 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+                        <Ionicons name="people-outline" size={32} color="#475569" />
+                        <Text className="text-slate-500 text-sm mt-3">No members to show</Text>
+                    </View>
+                )}
             </View>
-          )}
-        </View>
-      </View>
-
-      {/* Members Section */}
-      <View className="px-6 py-5">
-        <View className="flex-row items-center justify-between mb-4">
-          <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">Members</Text>
-          <Text className="text-sm text-gray-500 dark:text-gray-400">{members.length} total</Text>
-        </View>
-
-        {/* Admins */}
-        {admins.length > 0 && (
-          <View className="mb-4">
-            <Text className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
-              Administrators ({admins.length})
-            </Text>
-            {admins.map((member) => (
-              <MemberItem 
-                key={member._id} 
-                member={member} 
-                isCurrentUser={member.user._id === userInfo?._id}
-                isOwner={member.user._id === group.createdBy._id}
-              />
-            ))}
-          </View>
-        )}
-
-        {/* Participants */}
-        {participants.length > 0 && (
-          <View>
-            <Text className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
-              Participants ({participants.length})
-            </Text>
-            {participants.map((member) => (
-              <MemberItem 
-                key={member._id} 
-                member={member} 
-                isCurrentUser={member.user._id === userInfo?._id}
-              />
-            ))}
-          </View>
-        )}
-      </View>
-    </ScrollView>
-  );
+        </ScrollView>
+    );
 }
-
-interface MemberItemProps {
-  member: GroupMember;
-  isCurrentUser?: boolean;
-  isOwner?: boolean;
-}
-
-function MemberItem({ member, isCurrentUser, isOwner }: MemberItemProps) {
-  return (
-    <View className="flex-row items-center py-3 border-b border-gray-50 dark:border-gray-800">
-      {/* Avatar */}
-      <View className="w-12 h-12 rounded-full bg-blue-500 items-center justify-center mr-3 overflow-hidden">
-        {member.user?.profilePicture ? (
-          <Image
-            source={{ uri: member.user?.profilePicture }}
-            className="w-12 h-12 rounded-full"
-          />
-        ) : (
-          <Text className="text-white font-semibold text-lg">
-            {member.user.name?.charAt(0)?.toUpperCase() || 'U'}
-          </Text>
-        )}
-      </View>
-
-      {/* Name and Info */}
-      <View className="flex-1">
-        <View className="flex-row items-center">
-          <Text className="text-base font-semibold text-gray-900 dark:text-gray-100">
-            {member.user.name || 'Unknown User'}
-          </Text>
-          {isCurrentUser && (
-            <View className="ml-2 bg-blue-100 px-2 py-0.5 rounded">
-              <Text className="text-xs font-semibold text-blue-600">You</Text>
-            </View>
-          )}
-        </View>
-        <Text className="text-sm text-gray-500 dark:text-gray-400">{member.user.email}</Text>
-      </View>
-
-      {/* Role Badge */}
-      <View className="flex-row items-center gap-2">
-        {isOwner && (
-          <View className="bg-amber-100 px-3 py-1 rounded-full">
-            <View className="flex-row items-center">
-              <Ionicons name="star" size={14} color="#D97706" />
-              <Text className="text-xs font-semibold text-amber-700 ml-1">Owner</Text>
-            </View>
-          </View>
-        )}
-        {member.role === 'admin' && (
-          <View className="bg-purple-100 px-3 py-1 rounded-full">
-            <View className="flex-row items-center">
-              <Ionicons name="shield-checkmark" size={14} color="#8B5CF6" />
-              <Text className="text-xs font-semibold text-purple-600 ml-1">Admin</Text>
-            </View>
-          </View>
-        )}
-      </View>
-    </View>
-  );
-}
-

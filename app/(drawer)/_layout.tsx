@@ -1,83 +1,66 @@
-import { Ionicons } from "@expo/vector-icons";
-import { Drawer } from "expo-router/drawer";
-import AuthGuard from "../../components/AuthGuard";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useColorScheme } from "react-native";
-import { Text } from "react-native";
+import CustomDrawerContent from '@/components/CustomDrawerContent';
+import { Drawer } from 'expo-router/drawer';
+import AuthGuard from '../../components/AuthGuard';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+const HEADER_DARK = {
+    backgroundColor: '#07090F',
+    elevation: 0,
+    shadowOpacity: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+} as const;
+
+const HEADER_TITLE = { color: '#f8fafc', fontWeight: '700' as const };
 
 export default function DrawerLayout() {
-    const colorschema = useColorScheme()
     return (
-        <SafeAreaView className="flex-1">
+        <SafeAreaView className="flex-1" edges={['left', 'right']}>
             <AuthGuard>
                 <Drawer
+                    drawerContent={(props) => <CustomDrawerContent {...props} />}
                     screenOptions={{
-                        headerStyle: {
-                            backgroundColor: colorschema === "light" ? "#ffffff" : "#1A1A1A",
-                            elevation: 8,
-
-                            // Shadow for iOS
-                            shadowColor: colorschema === "light" ? "#00000020" : "#60A5FA55", // soft glow tint
-                            shadowOffset: { width: 0, height: 4 },
-                            shadowOpacity: 0.35,
-                            shadowRadius: 8,
-                        },
-                        headerTintColor: `${colorschema === "light" ? "#111111" : "#60A5FA"}`,
-
+                        headerShown: true,
+                        headerStyle: HEADER_DARK,
+                        headerTintColor: '#a5b4fc',
+                        headerTitleStyle: HEADER_TITLE,
+                        drawerType: 'front',
                         drawerStyle: {
-                            backgroundColor: colorschema === "light" ? "#f6f6f6" : "#111111",
+                            width: 300,
+                            backgroundColor: '#07090F',
                         },
-
-                        drawerLabelStyle: {
-                            fontSize: 15,
-                            fontWeight: "600",
-                        },
-
-                        drawerActiveBackgroundColor:
-                            colorschema === "light" ? "#e5e9ff" : "#1A1A1A",
-
-                        drawerActiveTintColor:
-                            colorschema === "light" ? "#2563EB" : "#60A5FA", // (blue-600 for light) (blue-400 for dark)
-
-                        drawerInactiveTintColor:
-                            colorschema === "light" ? "#4A4A4A" : "#BBBBBB",
-
-                        drawerInactiveBackgroundColor: "transparent",
+                        overlayColor: 'rgba(0,0,0,0.65)',
                         swipeEnabled: true,
+                        drawerActiveTintColor: '#a5b4fc',
+                        drawerInactiveTintColor: '#64748b',
                     }}
                 >
                     <Drawer.Screen
                         name="(tab)"
                         options={{
-                            title: 'My Chats',
-                            drawerIcon: ({ color, size }) => (
-                                <Ionicons name="chatbox-outline" color={color} size={size} />
-                            ),
-                            drawerLabel: 'Chats',
-                        }} />
+                            title: 'Convoo',
+                            drawerItemStyle: { display: 'none' },
+                            drawerLabel: () => null,
+                        }}
+                    />
                     <Drawer.Screen
                         name="profile"
                         options={{
                             title: 'Profile',
-                            drawerIcon: ({ color, size }) => (
-                                <Ionicons name="person" color={color} size={size} />
-                            )
-                        }} 
-
-                        />
+                            drawerItemStyle: { display: 'none' },
+                            drawerLabel: () => null,
+                        }}
+                    />
                     <Drawer.Screen
                         name="setting"
                         options={{
-                            title: 'Setting',
-                            drawerIcon: ({ color, size }) => (
-                                <Ionicons name="settings" color={color} size={size} />
-                            ),
-
-
-                        }} 
-                        />
+                            title: 'Settings',
+                            drawerItemStyle: { display: 'none' },
+                            drawerLabel: () => null,
+                        }}
+                    />
                 </Drawer>
             </AuthGuard>
         </SafeAreaView>
-    )
+    );
 }

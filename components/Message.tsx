@@ -106,11 +106,11 @@ export default function Message({ item, setIsReplyTo, selectedMessage, setSelect
         if (!replyTo) return null;
 
         return (
-            <View className="bg-gray-100 rounded-lg p-2 mb-2 border-l-4 border-blue-500">
-                <Text className="text-xs text-gray-600 font-medium">
+            <View className="bg-black/20 rounded-xl p-2.5 mb-2 border-l-[3px] border-indigo-400">
+                <Text className="text-[11px] text-indigo-300 font-semibold">
                     {replyTo?.sender?.name}
                 </Text>
-                <Text className="text-sm text-gray-700" numberOfLines={2}>
+                <Text className="text-sm text-slate-300 mt-0.5" numberOfLines={2}>
                     {replyTo?.content || 'File message'}
                 </Text>
             </View>
@@ -150,7 +150,7 @@ export default function Message({ item, setIsReplyTo, selectedMessage, setSelect
                     </View>
                 )}
                 {message.content && (
-                    <Text className={`text-base mt-2 ${isMyMsg ? 'text-white' : 'text-gray-900'}`}>
+                    <Text className={`text-[15px] mt-2 ${isMyMsg ? 'text-white' : 'text-slate-100'}`}>
                         {message.content}
                     </Text>
                 )}
@@ -172,7 +172,7 @@ export default function Message({ item, setIsReplyTo, selectedMessage, setSelect
                 <GestureDetector gesture={combinedGesture}>
                     <View className="relative">
                         <Animated.View style={animatedReplyIcon} className="absolute left-5">
-                            <Reply size={24} color="#25D366" />
+                            <Reply size={22} color="#818cf8" />
                         </Animated.View>
                         <Pressable
                             onLongPress={() => {
@@ -181,13 +181,18 @@ export default function Message({ item, setIsReplyTo, selectedMessage, setSelect
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             }}
                             delayLongPress={400}
-                            className={`mb-3 ${isMyMsg ? 'items-end' : 'items-start'} ${selectedMessage?._id === item._id && `bg-green-100 rounded-lg p-1 ${!isMyMsg ? 'border-l-4 border-green-500' : 'border-r-4 border-green-500'}`}`}
+                            className={`mb-3 px-1 ${isMyMsg ? 'items-end' : 'items-start'} ${selectedMessage?._id === item._id ? 'bg-indigo-500/10 rounded-2xl py-1' : ''}`}
                         >
+                            {!isMyMsg && item.messageType === 'group' && (
+                                <Text className="text-[11px] text-indigo-400/80 font-medium mb-1 ml-1">
+                                    {item.sender?.name}
+                                </Text>
+                            )}
                             <Animated.View
                                 style={animatedBubbleStyle}
-                                className={`relative max-w-xs px-4 py-3 rounded-2xl ${isMyMsg
-                                    ? 'bg-blue-500 rounded-br-md'
-                                    : 'bg-gray-200 rounded-bl-md'
+                                className={`relative max-w-[82%] px-4 py-3 rounded-[18px] ${isMyMsg
+                                    ? 'bg-indigo-600 rounded-br-[4px]'
+                                    : 'bg-white/[0.08] border border-white/[0.06] rounded-bl-[4px]'
                                     }`}
                             >
                                 {/* Reply to message */}
@@ -201,7 +206,7 @@ export default function Message({ item, setIsReplyTo, selectedMessage, setSelect
                                             size={16}
                                             color={isMyMsg ? '#ccc' : '#666'}
                                         />
-                                        <Text className={`text-sm ml-2 ${isMyMsg ? 'text-gray-300' : 'text-gray-500'}`}>
+                                        <Text className={`text-sm ml-2 italic ${isMyMsg ? 'text-indigo-200/70' : 'text-slate-500'}`}>
                                             This message was deleted
                                         </Text>
                                     </View>
@@ -209,8 +214,7 @@ export default function Message({ item, setIsReplyTo, selectedMessage, setSelect
                                     renderFileMessage(item)
                                 ) : (
                                     <Text
-                                        className={`text-base ${isMyMsg ? 'text-white' : 'text-gray-900'
-                                            }`}
+                                        className={`text-[15px] leading-[21px] ${isMyMsg ? 'text-white' : 'text-slate-100'}`}
                                     >
                                         {item.content}
                                     </Text>
@@ -224,8 +228,7 @@ export default function Message({ item, setIsReplyTo, selectedMessage, setSelect
                                 </View>
                             </Animated.View>
 
-                            {/* Timestamp */}
-                            <Text className="text-xs text-gray-500 mt-1">
+                            <Text className={`text-[10px] mt-1 ${isMyMsg ? 'text-slate-600' : 'text-slate-600'}`}>
                                 {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </Text>
                         </Pressable>
@@ -249,6 +252,7 @@ export default function Message({ item, setIsReplyTo, selectedMessage, setSelect
                 snapPoints={['50%']}
                 initialSnapIndex={0}
                 ref={bottomSheetRef}
+                className="bg-[#111827]"
             >
                 <FlatList
                     data={item?.reactions || []}
@@ -256,7 +260,7 @@ export default function Message({ item, setIsReplyTo, selectedMessage, setSelect
                         <View className="px-3 py-2 flex-row items-center justify-between">
                             <Text className="text-3xl mr-3">{reaction.emoji}</Text>
                             <View className="flex-1">
-                                <Text className="text-base font-semibold text-gray-900">{reaction.user.name}</Text>
+                                <Text className="text-base font-semibold text-white">{reaction.user.name}</Text>
                                 <Text className="text-xs text-gray-500 mt-0.5">{
                                     new Date(item?.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                                 }</Text>

@@ -155,4 +155,12 @@ export const gradients = {
   subtle: 'linear-gradient(135deg, #f8fafc, #f1f5f9)', // slate-50 to slate-100
 };
 
+/** App shell — status bar, root background, drawer */
+export const appShell = {
+  background: '#07090F',
+  statusBarBackground: '#07090F',
+  /** Light icons/text on dark status bar */
+  statusBarStyle: 'light' as const,
+};
+
 export default colors;

@@ -1,252 +1,313 @@
+import ChatListRow, { formatChatTime } from '@/components/ChatListRow';
 import { BottomSheetComponent, BottomSheetRef } from '@/components/ui/bottom-sheet';
+import { useSelection } from '@/zustand/selection.store';
 import { Ionicons } from '@expo/vector-icons';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
+import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, KeyboardAvoidingView, Platform, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Animated,
+    FlatList,
+    KeyboardAvoidingView,
+    Platform,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import Toast from 'react-native-toast-message';
-import { Button } from '../../../components/ui/Button';
-import { Input } from '../../../components/ui/input';
 import { addUser, getReceivers } from '../../../services/apiServices';
 import { Receiver, ReceiversResponse } from '../../../types';
 import { useReceiver } from '../../../zustand/receiver.store';
-import * as Haptics from 'expo-haptics';
-import { useSelection } from '@/zustand/selection.store';
 
+const BG = '#07090F';
+
+function Fab({ onPress }: { onPress: () => void }) {
+    return (
+        <TouchableOpacity onPress={onPress} activeOpacity={0.88} className="absolute right-5 bottom-28">
+            <LinearGradient
+                colors={['#6366f1', '#4f46e5']}
+                style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 18,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    shadowColor: '#6366f1',
+                    shadowOffset: { width: 0, height: 6 },
+                    shadowOpacity: 0.45,
+                    shadowRadius: 12,
+                    elevation: 10,
+                }}
+            >
+                <Ionicons name="person-add" size={24} color="#fff" />
+            </LinearGradient>
+        </TouchableOpacity>
+    );
+}
+
+function ListHeader({ count }: { count: number }) {
+    return (
+        <View className="px-6 pt-2 pb-5">
+            <Text className="text-indigo-400 text-[11px] font-semibold tracking-[2.5px] uppercase mb-2">
+                Messages
+            </Text>
+            <Text className="text-white text-[28px] font-bold tracking-tight leading-tight">
+                Your chats
+            </Text>
+            <Text className="text-slate-500 text-sm mt-1.5">
+                {count === 0
+                    ? 'Start a conversation with someone new'
+                    : `${count} conversation${count === 1 ? '' : 's'}`}
+            </Text>
+        </View>
+    );
+}
+
+function EmptyState({ onAdd }: { onAdd: () => void }) {
+    return (
+        <View className="items-center justify-center px-10 py-16">
+            <View className="w-20 h-20 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 items-center justify-center mb-5">
+                <Ionicons name="chatbubbles-outline" size={40} color="#818cf8" />
+            </View>
+            <Text className="text-white text-xl font-bold mb-2">No chats yet</Text>
+            <Text className="text-slate-500 text-center text-sm leading-relaxed mb-6">
+                Add a contact by email or phone to start messaging
+            </Text>
+            <TouchableOpacity onPress={onAdd} activeOpacity={0.85} className="rounded-2xl overflow-hidden">
+                <LinearGradient
+                    colors={['#6366f1', '#4f46e5']}
+                    style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingHorizontal: 24,
+                        paddingVertical: 14,
+                        gap: 8,
+                    }}
+                >
+                    <Ionicons name="person-add-outline" size={18} color="#fff" />
+                    <Text className="text-white font-bold text-[15px]">Add contact</Text>
+                </LinearGradient>
+            </TouchableOpacity>
+        </View>
+    );
+}
 
 export default function ChatsScreen() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const snapPoints = useMemo(() => ['50%', '90%'], []);
-  const [contact, setContact] = useState<string>('')
-  const [bottomSheetOpen, setBottomSheetOpen] = useState(false)
-  // const [selectedContacts, setSelectedContacts] = useState<Receiver[]>([])
-  const { selectedContacts, setSelectedContacts } = useSelection();
+    const router = useRouter();
+    const queryClient = useQueryClient();
+    const [contact, setContact] = useState('');
+    const { selectedContacts, setSelectedContacts } = useSelection();
+    const bottomSheetRef = useRef<BottomSheetRef>(null);
+    const { setReceiver } = useReceiver();
+    const [fieldFocused, setFieldFocused] = useState(false);
+    const lineAnim = useRef(new Animated.Value(0)).current;
 
+    useEffect(() => {
+        Animated.timing(lineAnim, {
+            toValue: fieldFocused ? 1 : 0,
+            duration: 220,
+            useNativeDriver: false,
+        }).start();
+    }, [fieldFocused]);
 
-  const bottomSheetRef = useRef<BottomSheetRef>(null);
-  const colorschema = useColorScheme()
-  const isDark = colorschema === 'dark'
+    const lineWidth = lineAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0%', '100%'],
+    });
 
-  const { data: receivers, isLoading, refetch } = useQuery<ReceiversResponse>({
-    queryKey: ['receivers'],
-    queryFn: async () => {
-      const response = await getReceivers();
-      return response.data as ReceiversResponse;
-    },
-  });
-  const { mutate: addUserMutation, isPending: isAddingUser } = useMutation({
-    mutationFn: async (payload: { email?: string; mobile?: string }) => {
-      const response = await addUser(payload);
-      return response.data;
-    },
-    onSuccess: () => {
-      Toast.show({
-        text1: 'Contact added successfully',
-        type: 'success',
-      });
-      refetch();
-    },
-    onError: (error: unknown) => {
-      if (error instanceof AxiosError) {
-        Toast.show({
-          text1: `${error.response?.data?.message}`,
-          type: 'error',
-        });
-      } else {
-        Toast.show({
-          text1: "An unexpected error occurred",
-          type: 'error',
-        });
-      }
-    },
-  });
+    const { data: receivers, isLoading, refetch } = useQuery<ReceiversResponse>({
+        queryKey: ['receivers'],
+        queryFn: async () => {
+            const response = await getReceivers();
+            return response.data as ReceiversResponse;
+        },
+    });
 
- const handleLongPress = (contact: Receiver) => {
-  Haptics.selectionAsync();
-  setSelectedContacts(
-    selectedContacts.includes(contact)
-      ? selectedContacts.filter((c) => c._id !== contact._id)
-      : [...selectedContacts, contact]
-  );
-};
+    const list = receivers?.receivers || [];
 
-const handleSmallPress = (contact: Receiver) => {
-  if (selectedContacts.length > 0) {
-    Haptics.selectionAsync();
-    setSelectedContacts(
-      selectedContacts.includes(contact)
-        ? selectedContacts.filter((c) => c._id !== contact._id)
-        : [...selectedContacts, contact]
-    );
-  } else {
-    setReceiver({ receiver: contact, selectionType: 'private' });
-    router.push(`/chat/${contact._id}`);
-  }
-};
+    const { mutate: addUserMutation, isPending: isAddingUser } = useMutation({
+        mutationFn: async (payload: { email?: string; mobile?: string }) => {
+            const response = await addUser(payload);
+            return response.data;
+        },
+        onSuccess: () => {
+            Toast.show({ text1: 'Contact added successfully', type: 'success' });
+            refetch();
+            bottomSheetRef.current?.dismiss();
+            setContact('');
+        },
+        onError: (error: unknown) => {
+            if (error instanceof AxiosError) {
+                Toast.show({ text1: `${error.response?.data?.message}`, type: 'error' });
+            } else {
+                Toast.show({ text1: 'An unexpected error occurred', type: 'error' });
+            }
+        },
+    });
 
-  const { setReceiver } = useReceiver()
+    const openAddSheet = () => {
+        requestAnimationFrame(() => bottomSheetRef.current?.present());
+    };
 
-  const renderChatItem = ({ item }: { item: Receiver }) => (
-    <TouchableOpacity
-      className={`flex-row items-center p-4 border-b border-gray-200 dark:border-gray-700 ${selectedContacts.includes(item) ? 'bg-gray-100 dark:bg-gray-800' : ''}`}
-      onPress={() => {
-        handleSmallPress(item)
-      }}
-      onLongPress={() => {
-        handleLongPress(item)
-      }}
-    >
-     <View className="w-12 h-12 rounded-full bg-blue-500 items-center justify-center mr-3 relative">
-  {item?.profilePic ? (
-    <Image
-      source={{ uri: item.profilePic }}
-      className="w-12 h-12 rounded-full"
-    />
-  ) : (
-    <Text className="text-white font-semibold text-lg rounded-full">
-      {item?.name?.charAt(0)}
-    </Text>
-  )}
+    const handleLongPress = (item: Receiver) => {
+        Haptics.selectionAsync();
+        setSelectedContacts(
+            selectedContacts.includes(item)
+                ? selectedContacts.filter((c) => c._id !== item._id)
+                : [...selectedContacts, item]
+        );
+    };
 
-  {selectedContacts.includes(item) && (
-    <View className="absolute bottom-0 right-0">
-      <Ionicons name="checkmark-circle" size={20} color="#007AFF" />
-    </View>
-  )}
-</View>
+    const handlePress = (item: Receiver) => {
+        if (selectedContacts.length > 0) {
+            Haptics.selectionAsync();
+            setSelectedContacts(
+                selectedContacts.includes(item)
+                    ? selectedContacts.filter((c) => c._id !== item._id)
+                    : [...selectedContacts, item]
+            );
+        } else {
+            setReceiver({ receiver: item, selectionType: 'private' });
+            router.push(`/chat/${item._id}`);
+        }
+    };
 
+    const handleAddContact = () => {
+        const trimmed = contact.trim();
+        if (!trimmed) return;
+        const isEmail = trimmed.includes('@');
+        addUserMutation(isEmail ? { email: trimmed } : { mobile: trimmed });
+    };
 
-      <View className="flex-1">
-        <View className="flex-row justify-between items-center mb-1">
-          <Text className="font-semibold text-lg text-gray-900 dark:text-gray-100">{item.name}</Text>
-          <Text className="text-sm text-gray-500 dark:text-gray-400">{item?.lastMessageTimestamp ? new Date(item?.lastMessageTimestamp).toLocaleString() : ''}</Text>
-        </View>
-
-        <View className="flex-row justify-between items-center">
-          <Text className="text-gray-600 dark:text-gray-300 flex-1" numberOfLines={1}>
-            {item?.lastMessage?.content}
-          </Text>
-          {item?.unreadCount > 0 && (
-            <View className="bg-blue-500 rounded-full w-6 h-6 items-center justify-center ml-2">
-              <Text className="text-white text-xs font-semibold">
-                {item?.unreadCount}
-              </Text>
-            </View>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-
-
-
-  return (
-    <View
-      className="flex-1 bg-white dark:bg-black "
-      style={{ backgroundColor: isDark ? '#181818' : '#ffffff' }}
-    >
-      {isLoading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
-      ) : (
-        <>
-          <View className="flex-1">
-        <FlatList
-          data={receivers?.receivers || []}
-          keyExtractor={(item) => item?._id || ''}
-          renderItem={renderChatItem}
-          showsVerticalScrollIndicator={false}
-        />
-        <TouchableOpacity onPress={() => { 
-          setBottomSheetOpen(true); 
-          requestAnimationFrame(() => bottomSheetRef.current?.present()); 
-          }} className={`${isDark ? 'bg-gray-800' : 'bg-gray-200'} absolute bottom-28 right-10 p-4 rounded-xl`}>
-          <Ionicons name="add" size={24} color="#007AFF" />
-        </TouchableOpacity>
-      </View>
-      <BottomSheetComponent
-        snapPoints={['80%']}
-        initialSnapIndex={0}
-        ref={bottomSheetRef}
-      >
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
-          <View className="px-6 pb-6">
-            <View className="items-center mb-6">
-              <View className="w-16 h-16 rounded-full bg-blue-500 items-center justify-center mb-4"
-                style={{
-                  shadowColor: '#3b82f6',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
-                  elevation: 8,
-                }}
-              >
-                <Ionicons name="person-add" size={32} color="#ffffff" />
-              </View>
-              <Text className="text-2xl font-bold text-gray-900 mb-2">Add New Contact</Text>
-              <Text className="text-sm text-gray-500 text-center px-4">
-                Enter an email address or phone number to add a contact
-              </Text>
-            </View>
-
-            <View className="mb-6">
-              <View className="flex-row items-center mb-2">
-                <View className="mr-2">
-                  <Ionicons name="mail-outline" size={20} color="#6b7280" />
+    return (
+        <View className="flex-1" style={{ backgroundColor: BG }}>
+            {isLoading ? (
+                <View className="flex-1 items-center justify-center">
+                    <ActivityIndicator size="large" color="#6366f1" />
+                    <Text className="text-slate-500 text-sm mt-4">Loading conversations…</Text>
                 </View>
-                <Text className="text-sm font-semibold text-gray-700">Email or Phone Number</Text>
-              </View>
-              <Input
-                placeholder="contact@example.com or +1234567890"
-                value={contact}
-                onChangeText={setContact}
-                className="mb-4 bg-gray-50 border-gray-200 focus:border-blue-500"
-              />
-            </View>
+            ) : (
+                <>
+                    <FlatList
+                        data={list}
+                        keyExtractor={(item) => item._id}
+                        renderItem={({ item }) => (
+                            <ChatListRow
+                                name={item.name}
+                                subtitle={item.lastMessage?.content}
+                                timestamp={formatChatTime(item.lastMessageTimestamp)}
+                                avatarUri={item.profilePic}
+                                unreadCount={item.unreadCount}
+                                selected={selectedContacts.includes(item)}
+                                onPress={() => handlePress(item)}
+                                onLongPress={() => handleLongPress(item)}
+                            />
+                        )}
+                        ListHeaderComponent={<ListHeader count={list.length} />}
+                        ListEmptyComponent={<EmptyState onAdd={openAddSheet} />}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{
+                            paddingBottom: 120,
+                            flexGrow: list.length === 0 ? 1 : undefined,
+                        }}
+                    />
+                    {list.length > 0 && <Fab onPress={openAddSheet} />}
+                </>
+            )}
 
-            <Button
-              onPress={() => {
-                if (contact.trim()) {
-                  addUserMutation({ email: contact });
-                  setContact('');
-                  setBottomSheetOpen(false);
-                }
-              }}
-              disabled={isAddingUser || !contact.trim()}
-              className="bg-blue-500 py-4 rounded-xl shadow-lg"
-              style={{
-                shadowColor: '#3b82f6',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 6,
-              }}
+            <BottomSheetComponent 
+            snapPoints={['55%']} 
+            initialSnapIndex={0} 
+            ref={bottomSheetRef}
             >
-              {isAddingUser ? (
-                <View className="flex-row items-center justify-center">
-                  <View className="mr-2">
-                    <ActivityIndicator size="small" color="#ffffff" />
-                  </View>
-                  <Text className="text-white font-semibold text-base">Adding...</Text>
-                </View>
-              ) : (
-                <View className="flex-row items-center justify-center">
-                  <View className="mr-2">
-                    <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
-                  </View>
-                  <Text className="text-white font-semibold text-base">Add Contact</Text>
-                </View>
-              )}
-            </Button>
-          </View>
-        </KeyboardAvoidingView>
-      </BottomSheetComponent>
-        </>
-      )
-    }
-    </View>
-  )
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    className="flex-1"
+                >
+                    <View className="px-6 pb-8 bg-[#111827]">
+                        <View className="items-center mb-6">
+                            <View className="w-14 h-14 rounded-2xl bg-indigo-500/15 border border-indigo-500/25 items-center justify-center mb-4">
+                                <Ionicons name="person-add" size={28} color="#818cf8" />
+                            </View>
+                            <Text className="text-white text-xl font-bold">Add contact</Text>
+                            <Text className="text-slate-500 text-sm text-center mt-2 px-4 leading-relaxed">
+                                Enter an email or phone number to find someone on Convoo
+                            </Text>
+                        </View>
+
+                        <View className="mb-6">
+                            <Text
+                                className={`text-[10px] font-semibold tracking-widest uppercase mb-2 ${
+                                    fieldFocused ? 'text-indigo-400' : 'text-slate-500'
+                                }`}
+                            >
+                                Email or phone
+                            </Text>
+                            <View className="flex-row items-center pb-3 gap-3">
+                                <Ionicons
+                                    name="at-outline"
+                                    size={16}
+                                    color={fieldFocused ? '#818cf8' : '#334155'}
+                                />
+                                <TextInput
+                                    className="flex-1 text-[15px] text-slate-100 p-0 m-0"
+                                    placeholder="contact@example.com"
+                                    placeholderTextColor="#1e293b"
+                                    value={contact}
+                                    onChangeText={setContact}
+                                    autoCapitalize="none"
+                                    keyboardType="email-address"
+                                    onFocus={() => setFieldFocused(true)}
+                                    onBlur={() => setFieldFocused(false)}
+                                />
+                            </View>
+                            <View className="h-px bg-white/[0.07]" />
+                            <Animated.View
+                                style={{ width: lineWidth }}
+                                className="h-px bg-indigo-500 absolute bottom-0 left-0"
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            onPress={handleAddContact}
+                            disabled={isAddingUser || !contact.trim()}
+                            activeOpacity={0.85}
+                            className="rounded-2xl overflow-hidden"
+                        >
+                            <LinearGradient
+                                colors={
+                                    isAddingUser || !contact.trim()
+                                        ? ['#1e293b', '#1e293b']
+                                        : ['#6366f1', '#4f46e5']
+                                }
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    paddingVertical: 17,
+                                    gap: 8,
+                                }}
+                            >
+                                {isAddingUser ? (
+                                    <ActivityIndicator color="#fff" size="small" />
+                                ) : (
+                                    <>
+                                        <Text className="text-white font-bold text-[15px]">
+                                            Add contact
+                                        </Text>
+                                        <Ionicons name="arrow-forward" size={18} color="#fff" />
+                                    </>
+                                )}
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    </View>
+                </KeyboardAvoidingView>
+            </BottomSheetComponent>
+        </View>
+    );
 }

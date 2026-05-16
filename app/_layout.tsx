@@ -23,8 +23,8 @@ export default function RootLayout() {
         <SafeAreaProvider>
           <BottomSheetModalProvider>
             <StatusBar
-              backgroundColor={colorschema === "light" ? "#60A5FA" : "#121212"}
-              style={colorschema === "light" ? "dark" : "light"}
+              backgroundColor={"#4f46e5"}
+              style={"light"}
             />
             <Stack
               screenOptions={{
@@ -61,14 +61,24 @@ export default function RootLayout() {
                 options={{
                   headerShown: true,
                   title: 'Create Group',
-                  presentation: "modal"
-                }} />
+                  presentation: 'modal',
+                  headerStyle: {
+                    backgroundColor: '#07090F',
+                  },
+                  headerTintColor: '#a5b4fc',
+                  headerTitleStyle: { color: '#f8fafc', fontWeight: '700' },
+                }}
+              />
               <Stack.Screen
                 name="group/[id]"
                 options={{
                   headerShown: true,
-                  title: 'Group Details',
-                }} />
+                  title: 'Edit Group',
+                  headerStyle: { backgroundColor: '#07090F' },
+                  headerTintColor: '#a5b4fc',
+                  headerTitleStyle: { color: '#f8fafc', fontWeight: '700' },
+                }}
+              />
             </Stack>
           </BottomSheetModalProvider>
           <PortalHost />

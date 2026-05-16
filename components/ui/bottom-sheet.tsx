@@ -152,7 +152,7 @@ export const BottomSheetComponent = forwardRef<BottomSheetRef, BottomSheetProps>
           display: 'none',
         }}
         backgroundStyle={{
-          backgroundColor: isDark ? '#111827' : 'white',
+          backgroundColor: '#111827',
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
         }}

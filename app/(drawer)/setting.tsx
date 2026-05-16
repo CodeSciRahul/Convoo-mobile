@@ -24,7 +24,7 @@ export default function SettingScreen() {
     return (
         <ScrollView
             style={{
-                backgroundColor: `${colorschema === "light" ? "#FFFFFF" : "#181818"}`
+                backgroundColor: "#181818"
             }}
         >
             <View className="flex-1 p-4">
